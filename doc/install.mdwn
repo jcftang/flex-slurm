@@ -74,6 +74,12 @@ Example URL : http://lonsdale.tchpc.tcd.ie/
 * refreshtimes: Rate in miliseconds at which you want live data to be
   refreshed ( 30 000 is default ==> 30 second refresh interval )
 
+#### OSX
+
+On OSX, running the installer is straight forward. Once the install is completed,
+
+    $ cp settings.xml /Applications/TCHPC_SLURM_AIR.app/Contents/
+
 ## Compiled packages 
 
 The binaries folder inside of the TCHPC repo contains
