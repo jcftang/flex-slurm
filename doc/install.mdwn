@@ -1,3 +1,5 @@
+[[!toc]]
+
 ## Installing amfphp for php-flash communication
 
 ### Warning : PHP Version
@@ -18,7 +20,20 @@ Unzip the file to your public html folder
 
 > unzip "amfphp 1.9.zip" -d yourdirectory
 
-[amfphp]: http://amfphp.sourceforge.net/
+### Included amfphp - with the slurm services installed
+
+The installation of amfphp can be done by downloading the package from
+their website and copying the contents of that folder into a public
+html folder on your apache server. You would then define your php
+files that you want visible to the outer world inside of the services
+folder.
+
+However, inside of the howest repository there is a folder called
+amfphp\_full\_install containing the full amfphp that is at present
+running under lonsdale's file system this folder also contains the
+full services for both slurm\_web and slurm\_desktop ( slurm\_web has
+its Jobs functionality stripped out ).
+
 ## Configuration of settings for FLURM application
 
 The installation of the application can be done by running the AIR
@@ -30,7 +45,7 @@ application.
 
 The next step is the configuration of your settings file.
 
-### settings file ( settings.xml ) : 
+### Settings file ( settings.xml ) : 
 
 * url_gateway: contains the local url to your amfphp installation on your server
 
@@ -59,34 +74,20 @@ Example URL : http://lonsdale.tchpc.tcd.ie/
 * refreshtimes: Rate in miliseconds at which you want live data to be
   refreshed ( 30 000 is default ==> 30 second refresh interval )
 
-## amfphp 
+## Compiled packages 
 
-The installation of amfphp can be done by downloading the package from
-their website and copying the contents of that folder into a public
-html folder on your apache server. You would then define your php
-files that you want visible to the outer world inside of the services
-folder.
-
-However, inside of the howest repository there is a folder called
-amfphp\_full\_install containing the full amfphp that is at present
-running under lonsdale's file system this folder also contains the
-full services for both slurm\_web and slurm\_desktop ( slurm\_web has
-its Jobs functionality stripped out ).
-
-## compiled packages 
-
-The compiled packages folder inside of the TCHPC repo contains
+The binaries folder inside of the TCHPC repo contains
 separate folders for both the web and desktop version of the
 application.
 
-## flurm_Web 
+### flurm_Web 
 
 The web folder has a directly deployable application available, it is
 however important that you copy the contents of the ENTIRE folder onto
 your webserver. As usual the settings file is available, however don't
 move it into any subdirectory as it is already in its correct place.
 
-## flurm_Desktop
+### flurm_Desktop
 
 The desktop folder contains a compiled air package and a settings
 file. The installation can be done by running the air file and
@@ -94,3 +95,5 @@ deselecting the "run after installation" checkbox afterwards copy the
 settings.xml file into the root of the installation directory ( on
 windows machines this is usually in the Program Files or Program
 Files(x86) directory ).
+
+[amfphp]: http://amfphp.sourceforge.net/

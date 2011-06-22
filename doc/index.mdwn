@@ -15,3 +15,27 @@ functional they do not fully meet the requirements of the HOWEST
 internship requirements. With the php-slurm extension built along with
 supporting PHP code and libraries, this project will focus on creating
 a more interactive version of the basic site.
+
+## Requirements
+
+Tested with...
+
+### Client
+
+For the desktop application
+
+* Adobe AIR runtime
+* Windows
+* OSX 10.6
+
+For the web flash application
+
+* Adobe flash
+* Windows
+
+### Server
+
+* Slurm 2.2.0
+* php-slurm 1.x
+* amfphp 1.9
+* Scientificlinux 5.4 (php, apache)
