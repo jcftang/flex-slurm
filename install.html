@@ -1,0 +1,216 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN"
+ "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+
+<head>
+
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<title>install</title>
+
+<link rel="stylesheet" href="style.css" type="text/css" />
+
+<link rel="stylesheet" href="local.css" type="text/css" />
+
+
+
+
+
+</head>
+<body>
+
+<div class="page">
+
+<div class="pageheader">
+<div class="header">
+<span>
+<span class="parentlinks">
+
+<a href="./index.html">flex-slurm</a>/ 
+
+</span>
+<span class="title">
+install
+
+</span>
+</span>
+
+</div>
+
+
+
+
+
+</div>
+
+
+
+<div id="pagebody">
+
+<div id="content">
+<div class="toc">
+	<ol>
+		<li class="L2"><a href="#index1h2">Installing amfphp for php-flash communication</a>
+		</li>
+		<li class="L2"><a href="#index2h2">Configuration of settings for FLURM application</a>
+		</li>
+		<li class="L2"><a href="#index3h2">Compiled packages</a>
+		</li>
+	</ol>
+</div>
+
+<h2><a name="index1h2"></a>Installing amfphp for php-flash communication</h2>
+
+<h3><a name="index1h3"></a>Warning : PHP Version</h3>
+
+<p>Before installing <a href="http://amfphp.sourceforge.net/">amfphp</a>, make sure that your machine has at least
+php version 4.0 installed.</p>
+
+<h3><a name="index2h3"></a>Step 1 : Download amfphp</h3>
+
+<p>Download a stable version of amfphp (slurm-flex-air uses amfphp
+1.9)</p>
+
+<blockquote>
+  <p>wget "http://sourceforge.net/projects/amfphp/files/amfphp/amfphp 1.9.zip"</p>
+</blockquote>
+
+<h3><a name="index3h3"></a>Step 2 : Installing</h3>
+
+<p>Unzip the file to your public html folder</p>
+
+<blockquote>
+  <p>unzip "amfphp 1.9.zip" -d yourdirectory</p>
+</blockquote>
+
+<h3><a name="index4h3"></a>Included amfphp - with the slurm services installed</h3>
+
+<p>The installation of amfphp can be done by downloading the package from
+their website and copying the contents of that folder into a public
+html folder on your apache server. You would then define your php
+files that you want visible to the outer world inside of the services
+folder.</p>
+
+<p>However, inside of the howest repository there is a folder called
+amfphp_full_install containing the full amfphp that is at present
+running under lonsdale's file system this folder also contains the
+full services for both slurm_web and slurm_desktop ( slurm_web has
+its Jobs functionality stripped out ).</p>
+
+<h2><a name="index2h2"></a>Configuration of settings for FLURM application</h2>
+
+<p>The installation of the application can be done by running the AIR
+file.</p>
+
+<p>During the installation deselect the "run after installation" option
+and copy the settings file into the installation directory of your air
+application.</p>
+
+<p>The next step is the configuration of your settings file.</p>
+
+<h3><a name="index5h3"></a>Settings file ( settings.xml ) :</h3>
+
+<ul>
+<li><p>url_gateway: contains the local url to your amfphp installation on your server</p>
+
+<p>Example : ~vermeulp/amfphp/gateway.php</p>
+
+<p>url_slurm_functions : contains the filename of your slurm
+library file [Default = slurm.main]</p>
+
+<ul>
+<li>Sidenote : the syntax for this is slightly different from the
+basic URL syntax slurm.main is actually slurm/main.php, so in other
+words instead of having slashes you use a '.' and you leave out the
+file extension.</li>
+</ul></li>
+<li><p>clusters: Contains the different clusters on your system, this section is
+divided into cluster elements</p></li>
+</ul>
+
+<pre>
+    cluster
+        ----&gt;   name    :   The name of the cluster in the application
+        ----&gt;   url :   The base url to your cluster  make
+</pre>
+
+<p>Example URL : http://lonsdale.tchpc.tcd.ie/</p>
+
+<ul>
+<li>refreshtimes: Rate in miliseconds at which you want live data to be
+refreshed ( 30 000 is default ==&gt; 30 second refresh interval )</li>
+</ul>
+
+<h2><a name="index3h2"></a>Compiled packages</h2>
+
+<p>The binaries folder inside of the TCHPC repo contains
+separate folders for both the web and desktop version of the
+application.</p>
+
+<h3><a name="index6h3"></a>flurm_Web</h3>
+
+<p>The web folder has a directly deployable application available, it is
+however important that you copy the contents of the ENTIRE folder onto
+your webserver. As usual the settings file is available, however don't
+move it into any subdirectory as it is already in its correct place.</p>
+
+<h3><a name="index7h3"></a>flurm_Desktop</h3>
+
+<p>The desktop folder contains a compiled air package and a settings
+file. The installation can be done by running the air file and
+deselecting the "run after installation" checkbox afterwards copy the
+settings.xml file into the root of the installation directory ( on
+windows machines this is usually in the Program Files or Program
+Files(x86) directory ).</p>
+
+</div>
+
+
+
+<div id="comments">
+
+
+
+
+<div class="addcomment">Comments on this page are closed.</div>
+
+</div>
+
+
+
+</div>
+
+<div id="footer" class="pagefooter">
+
+<div id="pageinfo">
+
+
+
+
+<div id="backlinks">
+Links:
+
+<a href="./index.html">index</a>
+
+
+</div>
+
+
+
+
+
+
+<div class="pagedate">
+Last edited <span class="date">Wed 22 Jun 10:57:27 2011</span>
+<!-- Created <span class="date">Wed 22 Jun 10:02:12 2011</span> -->
+</div>
+
+</div>
+
+
+<!-- from flex-slurm -->
+</div>
+
+</div>
+
+</body>
+</html>
