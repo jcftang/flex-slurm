@@ -1,0 +1,6 @@
+Creating a branch with no history
+
+	git symbolic-ref HEAD refs/heads/html
+	git rm --cached -r .
+	git commit --allow-empty -m 'initial html branch'
+	git checkout -f master
