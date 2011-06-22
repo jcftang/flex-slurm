@@ -1,0 +1,7 @@
+Primary contacts for flex-slurm
+
+* Vermeulen Peter <nmb.peterv@gmail.com>
+
+Secondary contacts
+
+* Jimmy Tang <jtang@tchpc.tcd.ie>
