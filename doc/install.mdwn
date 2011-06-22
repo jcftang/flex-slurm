@@ -1,5 +1,3 @@
-# Documentation slurm-flex-air
-
 ## Installing amfphp for php-flash communication
 
 ### Warning : PHP Version
