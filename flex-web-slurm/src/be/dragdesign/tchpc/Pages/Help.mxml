@@ -1,0 +1,188 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:Group xmlns:fx="http://ns.adobe.com/mxml/2009" 
+		 xmlns:s="library://ns.adobe.com/flex/spark" 
+		 xmlns:mx="library://ns.adobe.com/flex/mx" currentState="DHELP">
+	<s:states>
+		<s:State name="DHELP"/>
+		<s:State name="JHELP"/>
+		<s:State name="NHELP"/>
+	</s:states>
+	<fx:Script>
+		<![CDATA[
+			import be.dragdesign.tchpc.components.about_popup;
+			import be.dragdesign.tchpc.events.HermesEvent;
+			
+			import mx.managers.PopUpManager;
+			
+			private var p:about_popup;
+			
+			protected function button1_clickHandler(event:MouseEvent):void
+			{
+				p = new about_popup();
+				
+				p.addEventListener(HermesEvent.HERMES_REPORTS_FOR_DUTY,on_hermes_pops);
+				PopUpManager.addPopUp(p,this,true);
+				PopUpManager.centerPopUp(p);
+			}
+			
+			private function on_hermes_pops(e:HermesEvent):void 
+			{
+				if(e.str_my_name == "close_me") {
+					PopUpManager.removePopUp(p);
+					p = null;
+				}
+			}
+		]]>
+	</fx:Script>
+
+	<fx:Declarations>
+		<!-- Place non-visual elements (e.g., services, value objects) here -->
+	</fx:Declarations>
+	<fx:Script>
+		<![CDATA[
+			public function shutdown_page():void
+			{
+				
+			}
+			public function boot_me_up():void
+			{
+				
+			}
+		]]>
+	</fx:Script>
+	<s:HGroup height="20" left="10" top="10" gap="5">
+		<s:Button label="Dashboard" width="100" height="20" click="{this.currentState = 'DHELP'}" />
+		<s:Button label="Nodes" width="100" height="20" click="{this.currentState = 'NHELP'}" />
+		<mx:VRule height="20" />
+		<s:Button label="About Flurm" height="20" width="200" click="button1_clickHandler(event)" />
+	</s:HGroup>
+	<s:Panel skinClass="be.dragdesign.tchpc.skins.PanelSkin" width="830" bottom="-29" left="10" top="40" title="Selection Detail">
+		<s:Group top="0" id="dash_group" left="0" right="0" bottom="0"   includeIn="DHELP" clipAndEnableScrolling="true">
+			<s:Label text="Description" left="10" top="10" right="10" height="20"  fontWeight="bold"/>
+			<mx:HRule left="10" top="30" right="10" />
+			<s:Label height="37" left="25" top="45" text="The dashboard page gives a basic overview of the status of the currently selected cluster,it provides the following sections : " right="35"/>
+			<s:Label height="15" left="45" top="60" text="- Sinfo Emulation" right="20" verticalAlign="middle"/>
+			<s:Label height="15" left="45" top="75" text="- Jobs Running/Pending (partitionwise) " right="20" verticalAlign="middle"/>
+			<s:Label height="15" left="45" top="90" text="- Overview of Cpu status per partition" right="20" verticalAlign="middle"/>
+			<s:Label height="15" left="45" top="105" text="- Basic overview of node states" right="20" verticalAlign="middle"/>
+			<s:Label text="Sinfo Emulation" left="10" top="133" right="10" height="20"  fontWeight="bold"/>
+			<mx:HRule left="10" top="153" right="10" />
+			<s:Label height="20" left="25" top="168" text="Any experienced SLURM user will know that the sinfo command provides a compressed and easy way to check the status of the cluster." right="35"/>
+			<s:Label y="196" text="Because of this simple yet very powerful format, sinfo has also been implemented into the visual application as the core of the Dashboard page." left="25" right="35"/>
+			<s:Label y="236" text="The implementation of the sinfo command that has been provided in this application has the same output as the console application would have. However there is some extra functionality on the side allowing for sorting and filtering. " left="25" right="35"/>
+			<s:Label height="15" left="45" top="274" text="- Direct recognition of malfunctioning (down/unknown state) nodes due to a color scheme" right="18" verticalAlign="middle"/>
+			<s:Label height="15" left="45" top="289" text="- Filtering by partition" right="18" verticalAlign="middle"/>
+			<s:Label height="15" left="45" top="304" text="- Sorting on any of the column headers" right="18" verticalAlign="middle"/>
+			<s:Rect width="7" height="15" left="570" y="273.4">
+				<s:stroke>
+					<s:SolidColorStroke color="#333333" weight="1" />
+				</s:stroke>
+				<s:fill>
+					<s:SolidColor color="#eec1c1" />
+				</s:fill>
+			</s:Rect>
+			<mx:Image y="332" visible="true" smoothBitmapContent="true" source="@Embed('assets/images/help_images/dashboard_sinfo.png')" height="232" left="25" right="35">
+				<mx:filters>
+					<mx:DropShadowFilter blurX="5" blurY="5" color="#000000" alpha=".5" distance="0" strength="1" quality="1" />
+				</mx:filters>
+			</mx:Image>
+			<s:Label text="Jobs Running/Pending (partitionwise)" left="10" top="574" right="10" height="20"  fontWeight="bold"/>
+			<mx:HRule left="10" top="594" right="10" />
+			<s:Label y="609" text="The pending and running jobs chart reveals a basic view of the following 2 items : " left="25" right="35"/>
+			<s:Label height="15" left="45" y="624" text="- Partitionwise view of the amount of jobs currently running" right="20" verticalAlign="middle"/>
+			<s:Label height="15" left="45" y="639" text="- Partitionwise view of the amount of jobs pending to be run in the near future" right="20" verticalAlign="middle"/>
+			<s:Label height="15" left="45" y="654" text="- Sidenote : By hovering over the section you can see a detailed tooltip on that section" right="20" verticalAlign="middle"/>
+			<mx:Image y="682" id="dash_jobs_rp" visible="true" smoothBitmapContent="true" source="@Embed('assets/images/help_images/dashboard_jobs_rp.png')" horizontalCenter="0">
+				<mx:filters>
+					<mx:DropShadowFilter blurX="5" blurY="5" color="#000000" alpha=".5" distance="0" strength="1" quality="1" />
+				</mx:filters>
+			</mx:Image>
+			<s:Label text="Overview of Cpu status per partition" left="10" id="dash_jrp" top="941" right="10" height="20"  fontWeight="bold"/>
+			<mx:HRule left="10" top="961" right="10" />
+			<s:Label y="976" text="This chart contains the status of all the cpus per partition. This way a user can easily see how many cpus are currently being used/available on a certain partition." left="25" right="35"/>
+			<mx:Image y="1004" visible="true" smoothBitmapContent="true" source="@Embed('assets/images/help_images/dashboard_cpus_rpa.png')" horizontalCenter="0">
+				<mx:filters>
+					<mx:DropShadowFilter blurX="5" blurY="5" color="#000000" alpha=".5" distance="0" strength="1" quality="1" />
+				</mx:filters>
+			</mx:Image>
+			<s:Label height="15" left="25" y="1250" text="Sidenote : All of the chart elements have their own customized tooltip which shows a detailed view" right="20" verticalAlign="middle"/>
+			<mx:Image y="1278" horizontalCenter="0" source="@Embed('assets/images/help_images/dashboard_cpus_detailed_view.png')" smoothBitmapContent="true">
+				<mx:filters>
+					<mx:DropShadowFilter blurX="5" blurY="5" color="#000000" alpha=".5" distance="0" strength="1" quality="1" />
+				</mx:filters>
+			</mx:Image>
+			<s:Label text="Basic overview of node states" left="10" top="1508" right="10" height="20"  fontWeight="bold"/>
+			<mx:HRule left="10" top="1528" right="10" />
+			<s:Label y="1543" text="The dashboard page contains 1 chart giving an overall view of the nodes on the currently selected partition(s), there is a secondary helper component containing a datagrid available which shows the numerical data used to form the chart" height="30" left="25" right="35"/>
+			<s:Label y="1573" text="Sidenote : The actual data used to form this chart contains of 3 elements (#cores, #cpus, #nodes). Therefor when looking at the datagrid you will see all of these elements shown, however the chart is plotted with the #nodes." height="30" left="25" right="35" />
+			<s:HGroup horizontalCenter="0" top="1616">
+				<mx:Image source="@Embed('assets/images/help_images/dashboard_nodes_state.png')" smoothBitmapContent="true">
+					<mx:filters>
+						<mx:DropShadowFilter blurX="5" blurY="5" color="#000000" alpha=".5" distance="0" strength="1" quality="1" />
+					</mx:filters>
+				</mx:Image>
+				<mx:Image source="@Embed('assets/images/help_images/dashboard_statedata.png')" smoothBitmapContent="true">
+					<mx:filters>
+						<mx:DropShadowFilter blurX="5" blurY="5" color="#000000" alpha=".5" distance="0" strength="1" quality="1" />
+					</mx:filters>
+				</mx:Image>
+			</s:HGroup>
+		</s:Group>
+		<s:Group top="0" left="0" id="help_group" right="0" bottom="0" includeIn="NHELP">
+			<s:Label text="Description" left="10" top="10" right="10" height="20"  fontWeight="bold"/>
+			<mx:HRule left="10" top="30" right="25" />
+			<s:Label left="25" top="45" text="The nodes page is a combination between static partition data and live node data, the static partition data is displayed in a full detailed view whereas the node data is displayed in a grid with a specific color scheme applied to the node states. In general the nodes page can be divided into 4 sections :" right="35"/>
+			<s:Label height="15" left="45" top="96" text="- Static partition data" right="20" verticalAlign="middle"/>
+			<s:Label height="15" left="45" top="111" text="- Node Grid" right="20" verticalAlign="middle"/>
+			<s:Label height="15" left="45" top="126" text="- Node state summaries" right="20" verticalAlign="middle"/>
+			<s:Label height="15" left="45" top="146" text="- Node details" right="20" verticalAlign="middle"/>
+			<s:Label text="Static partition data" top="166" right="10" fontWeight="bold" left="10" height="20"/>
+			<mx:HRule left="10" top="186" right="25" />
+			<s:Label text="The static partition data is composed of a panel showing all the configuration details of the selected partition" top="196" right="35" left="25" />
+			<s:Label text="Sidenote : Any value that hasn't been filled in will be given a red color and filled in as 'N/A'" top="211" right="35" left="25" />
+			<mx:Image source="@Embed('assets/images/help_images/nodes_page_part_panel.png')" horizontalCenter="0" smoothBitmapContent="true" top="236">
+				<mx:filters>
+					<mx:DropShadowFilter blurX="5" blurY="5" color="#000000" alpha=".5" distance="0" strength="1" quality="1" />
+				</mx:filters>	
+			</mx:Image>
+			<s:Label text="Node Grid" top="699" left="10" right="10" height="20" fontWeight="bold" />
+			<mx:HRule left="10" top="719" right="25" />
+			<s:Label text="The node grid shows a basic overview of the nodes and their state in your current selection. Based on their state the color of the node cell will change, for example a red cell would mean that the node is malfunctioning, whereas a green cell would mean the node is idle. Even though by default the nodegrid only shows the nodes in your current selection, an optional checkbox has been provided allowing to switch between your current selection and all the nodes on your cluster." top="734" left="25" right="35" />
+			<mx:Image width="700" height="355" scaleContent="true" source="@Embed('assets/images/help_images/nodes_page_node_grid.png')" smoothBitmapContent="true" top="789" horizontalCenter="0">
+				<mx:filters>
+					<mx:DropShadowFilter blurX="5" blurY="5" color="#000000" alpha=".5" distance="0" strength="1" quality="1" />
+				</mx:filters>	
+			</mx:Image>
+			<s:HGroup top="1154" horizontalCenter="0">
+				<mx:Image source="@Embed('assets/images/help_images/nodes_page_grid_legend.png')" smoothBitmapContent="true">
+					<mx:filters>
+						<mx:DropShadowFilter blurX="5" blurY="5" color="#000000" alpha=".5" distance="0" strength="1" quality="1" />
+					</mx:filters>	
+				</mx:Image>
+				<mx:Image source="@Embed('assets/images/help_images/nodes_page_node_grid_check.png')" smoothBitmapContent="true">
+					<mx:filters>
+						<mx:DropShadowFilter blurX="5" blurY="5" color="#000000" alpha=".5" distance="0" strength="1" quality="1" />
+					</mx:filters>	
+				</mx:Image>
+			</s:HGroup>
+			<s:Label text="Node state summaries" top="1389" height="20" left="10" right="10" fontWeight="bold" />
+			<mx:HRule left="10" top="1409" right="25" />
+			<s:Label text="The node state summaries section of the nodes page shows the hostlists per node state for your current selection, if there are no nodes for a certain state it will be shown as 'N/A'" top="1419" left="25" right="35" />
+			<s:Label text="Sidenote : by clicking on the hostlist, the cell containing the hostlist will turn into a textfield, allowing for users to select it." top="1444" left="25" right="35" />
+			<mx:Image source="@Embed('assets/images/help_images/nodes_page_summaries.png')" smoothBitmapContent="true" top="1464" horizontalCenter="0">
+				<mx:filters>
+					<mx:DropShadowFilter blurX="5" blurY="5" color="#000000" alpha=".5" distance="0" strength="1" quality="1" />
+				</mx:filters>	
+			</mx:Image>
+			<s:Label text="Node Details" top="1681" height="20" left="10" right="10" fontWeight="bold" />
+			<mx:HRule left="10" top="1701" right="25" />
+			<s:Label text="The node details is the same type of display as the partition display. However, the node display is based on your currently selected node in the nodegrid, and is to be used if a user would  want a deeper look into the details surrounding a specific node (for instance: if a node is malfunctioning, why is it malfunctioning ?)" top="1711" left="25" right="35" />
+			<mx:Image source="@Embed('assets/images/help_images/nodes_page_node_details.png')" smoothBitmapContent="true" top="1756" horizontalCenter="0">
+				<mx:filters>
+					<mx:DropShadowFilter blurX="5" blurY="5" color="#000000" alpha=".5" distance="0" strength="1" quality="1" />
+				</mx:filters>	
+			</mx:Image>
+		</s:Group>
+		<s:VScrollBar right="0" width="15" top="0" bottom="0" viewport.DHELP="{dash_group}" viewport.NHELP="{help_group}" />
+	</s:Panel>
+</s:Group>

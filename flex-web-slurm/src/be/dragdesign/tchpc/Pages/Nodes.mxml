@@ -1,0 +1,597 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:Group xmlns:fx="http://ns.adobe.com/mxml/2009" 
+		 xmlns:s="library://ns.adobe.com/flex/spark" 
+		 xmlns:mx="library://ns.adobe.com/flex/mx"
+		 xmlns:components="be.dragdesign.tchpc.components.*" 
+		 xmlns:rends="be.dragdesign.tchpc.renderers.*" creationComplete="group1_creationCompleteHandler(event)" mouseOut="bordercontainer1_mouseOutHandler(event)">
+	<fx:Metadata>
+		[Event(name="hermes",type="be.dragdesign.tchpc.events.HermesEvent")]
+	</fx:Metadata>
+	<fx:Declarations>
+		<mx:SeriesInterpolate id="interpolateIn" duration="500" />
+	</fx:Declarations>
+	<fx:Script>
+		<![CDATA[
+			import be.dragdesign.tchpc.application_objects.c_node_summary;
+			import be.dragdesign.tchpc.events.HermesEvent;
+			import be.dragdesign.tchpc.events.HermesEvent_Adv;
+			import be.dragdesign.tchpc.objects.Node;
+			import be.dragdesign.tchpc.objects.Partition;
+			import be.dragdesign.tchpc.objects.dashboard_pie;
+			import be.dragdesign.tchpc.objects.grid_row;
+			import be.dragdesign.tchpc.objects.hostlist_state_object;
+			import be.dragdesign.tchpc.objects.legend_item;
+			import be.dragdesign.tchpc.objects.partition_nodes;
+			import be.dragdesign.tchpc.renderers.node_visual_grid;
+			
+			import com.greensock.TweenMax;
+			
+			import dragdesign.Functions;
+			import dragdesign.instances.ModularStorage;
+			
+			import mx.collections.ArrayCollection;
+			import mx.collections.ListCollectionView;
+			import mx.containers.GridItem;
+			import mx.core.Application;
+			import mx.events.FlexEvent;
+			
+			import nl.demonsters.debugger.MonsterDebugger;
+			
+			import spark.components.gridClasses.GridColumn;
+			import spark.events.IndexChangeEvent;
+			
+			//
+			//	FIELDS
+			//
+			
+			[Bindable]
+			public var arr_part:ArrayCollection 		= new ArrayCollection();
+			
+			[Bindable]
+			public var part_selected:Partition			= null;
+			
+			[Bindable]
+			public var node_selected:Node				= null;
+			
+			public var t:Timer;
+			
+			public var f:Functions = new Functions();
+			
+			[Bindable]
+			public var partition_node_collection:Vector.<partition_nodes> = new Vector.<partition_nodes>();
+			
+			[Bindable]
+			public var partition_node_summary:Dictionary = new Dictionary(true);
+			
+			[Bindable]
+			public var current_sum_shown:ArrayCollection = new ArrayCollection();
+			
+			[Bindable]
+			public var partition_hostlist_summary:Dictionary = new Dictionary(true);
+			
+			[Bindable]
+			public var current_hostlist_shown:ArrayCollection = new ArrayCollection();
+			
+			[Bindable]
+			public var grid_col:ArrayCollection = new ArrayCollection();
+			
+			[Bindable]
+			public var legend_arr:ArrayCollection = new ArrayCollection();
+			
+			public var d2:Dictionary = new Dictionary();
+			
+			public function shutdown_page():void
+			{
+				if(t!=null) {
+					t.stop();
+				}
+			}
+			
+			public function boot_me_up():void
+			{
+				if(t!=null) {
+					t.start();
+				}
+			}
+			
+			public function reset_variables():void
+			{
+				partition_node_collection 	= new Vector.<partition_nodes>();
+				current_sum_shown			= new ArrayCollection();
+				partition_node_summary 		= new Dictionary();
+				partition_hostlist_summary	= new Dictionary();
+				current_hostlist_shown		= new ArrayCollection();
+				grid_col					= new ArrayCollection();
+				d2							= new Dictionary();
+				arr_part					= new ArrayCollection();
+				part_selected				= null;
+				dataGrid.dataProvider = null;
+				dataGrid.invalidateDisplayList();
+				dataGrid.dataProvider = arr_part;
+				node_selected = null;
+			}
+			
+			public function load_start_partition():void
+			{
+				if(dataGrid.dataProvider.length != 0) {
+					dataGrid.selectedItem = (dataGrid.dataProvider as ArrayCollection).getItemAt(0) as Partition;
+					part_selected = (dataGrid.dataProvider as ArrayCollection).getItemAt(0) as Partition;
+				}
+			}
+			
+			public function process_my_nodelist(a:Array):void
+			{
+				partition_node_collection 	= new Vector.<partition_nodes>();
+				
+				partition_node_summary 		= new Dictionary();
+				partition_hostlist_summary	= new Dictionary();
+				var tmp:partition_nodes;
+				var tmp_inner:Object;
+				var tmp_node:Node;
+				var tmp_hostl:String;
+				var tmp_counter:uint = 0;
+				for each(var inner:Object in a) {
+					partition_node_summary[inner.partition] = [0,0,0,0,0,0,0,0];
+					partition_hostlist_summary[inner.partition] = ["N/A","N/A","N/A","N/A","N/A","N/A","N/A","N/A"];
+					tmp = new partition_nodes();
+					tmp.partition = inner.partition;
+					for(tmp_counter = 0;tmp_counter < 8;tmp_counter++) {
+						if(inner.hostlists[tmp_counter] == null || inner.hostlists[tmp_counter] == "(null)" || inner.hostlists[tmp_counter] == "null") 
+							continue;
+						partition_hostlist_summary[inner.partition][tmp_counter] = inner.hostlists[tmp_counter];
+					}
+					for each(tmp_inner in inner.nodes) {
+						tmp_node = new Node();
+						tmp_node.parse_raw_php_object(tmp_inner);
+						tmp.nodes.addItem(tmp_node);
+						if(tmp_node.node_state <= c_node_summary.SLURM_LAST_STATE[0]) {
+							partition_node_summary[inner.partition][tmp_node.node_state]++;
+						} else {
+							partition_node_summary[inner.partition][0]++;
+						}
+					}
+					partition_node_collection.push(tmp);
+				}
+				visualize_current_selection();
+				visualize_grid();
+			}
+			
+			public function visualize_current_selection():void
+			{
+				if(dataGrid.selectedIndex!=-1 && partition_node_collection.length!=0 && partition_node_collection != null) {
+					var pname:String = (dataGrid.selectedItem as Partition).PartitionName;
+					var my_arr:Array = partition_node_summary[pname] as Array;
+					var my_arr2:Array = partition_hostlist_summary[pname] as Array;
+					var tmp_pie:dashboard_pie;
+					var tmp_hls:hostlist_state_object;
+					current_sum_shown = new ArrayCollection();
+					current_hostlist_shown = new ArrayCollection();
+					for(var i:int = 0;i < 8; i++) {
+						tmp_pie = new dashboard_pie(i);
+						tmp_hls = new hostlist_state_object(c_node_summary.convert_state_to_string(i),my_arr2[i]);
+						tmp_pie.update_values(0,0,my_arr[i]);
+						current_sum_shown.addItem(tmp_pie);
+						current_hostlist_shown.addItem(tmp_hls);
+					}
+				}
+			}
+			
+			public function visualize_grid():void
+			{
+				if(partition_node_collection.length!=0 && partition_node_collection != null) {
+					grid_col = new ArrayCollection();
+					node_grid.dataProvider = null;
+					node_grid.invalidateDisplayList();
+					var ac:ArrayCollection = new ArrayCollection();
+					var c:partition_nodes;
+					var tmp_col:ArrayCollection = new ArrayCollection();
+					var t:Node;
+					d2 = new Dictionary();
+					node_selected = null;
+					for each(c in partition_node_collection) {
+						if(!chk_selected.selected) {
+							if(part_selected==null) {
+								return;
+							} else {
+								if(part_selected.PartitionName == c.partition) {
+									for each(t in c.nodes) {
+										
+										d2[t.node_name] = t;
+										tmp_col.addItem([c.partition,t]);
+									}
+									node_selected = c.nodes.getItemAt(0) as Node;
+									dispatchEvent(new HermesEvent_Adv(HermesEvent_Adv.HERMES_REQUESTS_YOUR_ATTENTION,"update_item_rends",null,true,true));
+									break;
+								}
+							}
+						} else {
+							for each(t in c.nodes) {
+								
+								d2[t.node_name] = t;
+								tmp_col.addItem([c.partition,t]);
+							}
+						}
+					}
+					if(node_selected == null) {
+						node_selected = (partition_node_collection[0] as partition_nodes).nodes[0];
+						dispatchEvent(new HermesEvent_Adv(HermesEvent_Adv.HERMES_REQUESTS_YOUR_ATTENTION,"update_item_rends",null,true,true));
+					}
+					var rows:uint = Math.ceil(tmp_col.length/5);
+					var tmp_obj:grid_row;
+					for(var i:uint = 0;i < rows; i++) {
+						tmp_obj = new grid_row();
+						var o:Object;
+						for(var y:uint = 0;y < 5; y++) {
+							if(tmp_col.length > ((i*5) + y)) {
+								if(tmp_col.getItemAt((i*5) + y) != null) {
+									o = (tmp_col.getItemAt((i*5) + y) as Array);
+									tmp_obj["node_"+y] = (o[1] as Node).node_state + "|" + (o[1] as Node).node_name + "|" + o[0];
+								} else {
+									tmp_obj["node_"+y] = "<<<THIS_IS_NOT_A_ROW>>>";
+								}
+							} else {
+								tmp_obj["node_"+y] = "<<<THIS_IS_NOT_A_ROW>>>";
+							}
+						}
+						ac.addItem(tmp_obj);
+					}
+					grid_col = ac;
+				}
+			}
+			
+			public function init_live_data_stream():void
+			{
+				//	Setting up timer to allow for refreshrates :)
+				if(t==null) {
+					t = new Timer(ModularStorage.getInstance().retreiveItemFromStorage("settings").dashboard_refreshtime);
+					t.addEventListener(TimerEvent.TIMER,on_timer_handler,false,0,true);
+				}
+				t.start();
+				on_timer_handler(null);	//	First call :)
+			}
+			
+			//
+			//	EVENTHANDLERS
+			//
+			
+			protected function on_timer_handler(e:TimerEvent):void
+			{
+				dispatchEvent(new HermesEvent(HermesEvent.HERMES_REQUESTS_YOUR_ATTENTION,"refresh_parts"));
+			}
+			
+			protected function dataGrid_changeHandler(event:IndexChangeEvent):void
+			{
+				part_selected = dataGrid.selectedItem as Partition;
+				visualize_current_selection();
+				visualize_grid();
+			}
+			
+			//	The following 2 functions will only be used for the first run ( this allows us to make sure that the first partition in the list is
+			//	being selected ). 
+			protected function group1_creationCompleteHandler(event:FlexEvent):void
+			{
+				legend_arr.addItem(new legend_item("Unknown",0xffa5a5));
+				legend_arr.addItem(new legend_item("Down",0xffa5a5));
+				legend_arr.addItem(new legend_item("Idle",0xa1ff8b));
+				legend_arr.addItem(new legend_item("Allocated",0xffbc5b));
+				legend_arr.addItem(new legend_item("Error",0xffa5a5));
+				legend_arr.addItem(new legend_item("Mixed",0xaeaeae));
+				legend_arr.addItem(new legend_item("Future",0x8eb8fd));
+				legend_arr.addItem(new legend_item("End",0x8eb8fd));
+				
+				node_grid.addEventListener(HermesEvent_Adv.HERMES_REQUESTS_YOUR_ATTENTION,on_hermes_node_handler,false,0,true);
+			}
+			
+			protected function on_hermes_node_handler(e:HermesEvent_Adv):void
+			{
+				if(e.str_my_name == "select_node") {
+					
+					var c:partition_nodes;
+					var t:Node;
+					for each(c in partition_node_collection) {
+						if(!chk_selected.selected) {
+							if(part_selected==null) {
+								return;
+							} else {
+								if(part_selected.PartitionName == c.partition) {
+									for each(t in c.nodes) {
+										if((t as Node).node_name == e.params[0]) {
+											node_selected = t;
+											dispatchEvent(new HermesEvent_Adv(HermesEvent_Adv.HERMES_REQUESTS_YOUR_ATTENTION,"update_item_rends",null,true,true));
+											return;
+										}	
+									}
+								}
+							}
+						} else {
+							for each(t in c.nodes) {
+								if((t as Node).node_name == e.params[0]) {
+									node_selected = t;
+									dispatchEvent(new HermesEvent_Adv(HermesEvent_Adv.HERMES_REQUESTS_YOUR_ATTENTION,"update_item_rends",null,true,true));
+									return;
+								}
+							}
+						}
+					}
+				}
+			}
+			
+			
+			protected function validate_me(s:String,sl:Label):String
+			{
+				if(s!=null && s!="null") {
+					return s;
+				} else {
+					sl.setStyle("color","0xFF0000");
+					return "N/A";
+				}
+			}
+			
+			protected function validate_date(d:Date, sl:Label):String
+			{
+				if(d!=null && d.time != 0) {
+					return d.date + " " + f.convertNrToMonth(d.month+1) + " " + d.fullYear + " " + d.hours + ":" + d.minutes + ":" + d.seconds;
+				} else {
+					sl.setStyle("color","0xFF0000");
+					return "N/A";
+				}
+			}
+			
+			protected function validate_array(a:Array, sl:Label):String
+			{
+				if(a!=null) {
+					if(a.length > 0) {
+						return a.toString();
+					}
+				}
+				sl.setStyle("color","0xFF0000");
+				return "N/A";
+			}
+
+			protected function checkbox1_clickHandler(event:MouseEvent):void
+			{
+				cursorManager.setBusyCursor();
+				visualize_grid();
+				cursorManager.removeBusyCursor();
+			}
+			
+			protected function bordercontainer1_mouseOverHandler(event:MouseEvent):void
+			{
+				TweenMax.to(brdc_partitions,.5,{alpha:1});
+			}
+			
+			
+			protected function bordercontainer1_mouseOutHandler(event:MouseEvent):void
+			{
+				TweenMax.to(brdc_partitions,.5,{alpha:0});
+			}
+
+		]]>
+	</fx:Script>
+	<s:Group top="0" left="0" right="0" bottom="0">
+		<mx:TabNavigator tabStyleName="tab" creationPolicy="all" horizontalGap="2" tabHeight="32" width="300" left="5" top="5" height="452">
+			<s:NavigatorContent label="Partition Details" width="100%" height="100%">
+				<s:VGroup height="420" paddingBottom="5" paddingTop="0" top="0" left="0" gap="0" width="300">
+					<s:HGroup width="100%" left="5">
+						<s:Group height="70">
+							<mx:Image top="15" width="45" source="@Embed('assets/images/gui/part_100px.png')" scaleContent="true" autoLoad="true" smoothBitmapContent="true"  left="15" height="45"/>
+						</s:Group>
+						<mx:Form width="243" contentBackgroundAlpha="0" backgroundAlpha="0" paddingTop="16" paddingRight="10" paddingBottom="5" paddingLeft="5">
+							<mx:FormItem contentBackgroundAlpha="0" backgroundAlpha="0" label="Name" width="100%" fontSize="10">
+								<s:Label text="{part_selected.PartitionName}" width="100%" fontSize="10" />
+							</mx:FormItem>
+							<mx:FormItem contentBackgroundAlpha="0" backgroundAlpha="0" label="State" width="100%" dropShadowVisible="false" fontSize="10">
+								<s:Label text="{part_selected.state}" width="100%" fontSize="10" />
+							</mx:FormItem>
+						</mx:Form>
+					</s:HGroup>
+					<mx:HRule width="298" />
+					<s:HGroup left="5" height="24" paddingLeft="15" contentBackgroundAlpha="0" width="100%">
+						<s:Group toolTip="Total amt. of cpus" height="100%" width="16">
+							<mx:Image source="@Embed('assets/images/gui/cpu.png')" scaleContent="true" autoLoad="true" width="16" height="16" top="4" />
+						</s:Group>
+						<s:Spacer width="5" />
+						<s:Label text="{part_selected.TotalCPUs}" height="24" verticalAlign="middle"  fontSize="11"/>
+						<s:Spacer width="5" />
+						<mx:VRule height="100%" />
+						<s:Spacer width="5" />
+						<s:Group toolTip="Total amt. of nodes" height="100%" width="16">
+							<mx:Image source="@Embed('assets/images/gui/Nodes.png')" smoothBitmapContent="true" scaleContent="true" autoLoad="true" width="16" height="16" top="4" />
+						</s:Group>
+						<s:Spacer width="5" />
+						<s:Label text="{part_selected.TotalNodes}" height="24" verticalAlign="middle"  fontSize="11"/>
+					</s:HGroup>
+					<mx:HRule width="298" />
+					<s:HGroup left="5" height="60" paddingLeft="15" contentBackgroundAlpha="0" width="100%">
+						<s:VGroup gap="0" width="125" height="60">
+							<s:CheckBox width="100%" height="20" enabled="false" selected="{part_selected.Default}" label="Default" />
+							<s:CheckBox width="100%" height="20" enabled="false" selected="{part_selected.Hidden}" label="Hidden" />
+							<s:CheckBox width="100%" height="20" enabled="false" selected="{part_selected.RootOnly}" label="RootOnly" />
+						</s:VGroup>
+						<mx:VRule height="100%" />
+						<s:VGroup gap="0" width="169" height="60">
+							<s:CheckBox width="100%" height="20" enabled="false" selected="{part_selected.DisableRootJobs}" label="No RootJobs" />
+							<s:CheckBox width="100%" height="20" enabled="false" selected="{part_selected.Shared}" label="Shared" />
+						</s:VGroup>
+					</s:HGroup>
+					<mx:HRule width="298" />
+					<s:HGroup paddingTop="5" paddingLeft="5" paddingRight="5" paddingBottom="5" width="300" height="100%" left="5">
+						<s:VGroup width="95" height="100%">
+							<s:Label text="AllocNodes" width="100%" height="15" verticalAlign="middle" />
+							<s:Label text="AllowGroups" width="100%" height="15" verticalAlign="middle" />
+							<s:Label text="DefaultTime" width="100%" height="15" verticalAlign="middle" />
+							<s:Label text="MaxTime" width="100%" height="15" verticalAlign="middle" />
+							<s:Label text="MinNodes" width="100%" height="15" verticalAlign="middle" />
+							<s:Label text="MaxNodes" width="100%" height="15" verticalAlign="middle" />
+							<s:Label text="Nodes" width="100%" height="20" verticalAlign="middle" />
+							<s:Label text="PreemptMode" width="100%" height="15" verticalAlign="middle" />
+							<s:Label text="Priority" width="100%" height="15" verticalAlign="middle" />
+						</s:VGroup>
+						<s:VGroup width="200" height="100%">
+							<s:Label text="{validate_me(part_selected.AllocNodes,lbl_allnodes)}" id="lbl_allnodes" textAlign="right" height="15" verticalAlign="middle" />
+							<s:Label text="{validate_me(part_selected.AllowGroups,lbl_allgroups)}" id="lbl_allgroups" textAlign="right" height="15" verticalAlign="middle" />
+							<s:Label text="{validate_me(part_selected.DefaultTime,lbl_maxtime)}" id="lbl_maxtime" textAlign="right" height="15" verticalAlign="middle" />
+							<s:Label text="{validate_me(part_selected.MaxTime,lbl_deftime)}" id="lbl_deftime" textAlign="right" height="15" verticalAlign="middle" />
+							<s:Label text="{validate_me(part_selected.MinNodes,lbl_minnodes)}" id="lbl_minnodes" textAlign="right" height="15" verticalAlign="middle" />
+							<s:Label text="{validate_me(part_selected.MaxNodes,lbl_maxnodes)}" id="lbl_maxnodes" textAlign="right" height="15" verticalAlign="middle" />
+							<s:TextInput text="{part_selected.Nodes}" id="lbl_nodes" width="186" left="0"  height="20" verticalCenter="0" enabled="true" editable="false" selectable="true" />
+							<s:Label text="{validate_me(part_selected.PreemptMode,lbl_preemptmode)}" id="lbl_preemptmode" textAlign="right" height="15" verticalAlign="middle" />
+							<s:Label text="{validate_me(part_selected.Priority + '',lbl_priority)}" id="lbl_priority" textAlign="right" height="15" verticalAlign="middle" />
+						</s:VGroup>
+					</s:HGroup>
+				</s:VGroup>
+				<s:Rect bottom="0" left="0" right="0" height="15">
+					<s:fill>
+						<s:LinearGradient rotation="90">
+							<s:GradientEntry color="#dadada" />
+							<s:GradientEntry color="#c5c5c5" />
+						</s:LinearGradient>
+					</s:fill>
+				</s:Rect>
+			</s:NavigatorContent>
+			<s:NavigatorContent label="Node Details" width="100%" height="100%">
+				<s:VGroup height="420" id="node_detail_group" paddingBottom="5" paddingTop="0" top="0" left="0" gap="0" width="300">
+					<s:HGroup width="100%" left="5">
+						<s:Group height="70">
+							<mx:Image top="15" width="45" source="@Embed('assets/images/gui/node_100.png')" scaleContent="true" autoLoad="true" smoothBitmapContent="true"  left="15" height="45"/>
+						</s:Group>
+						<mx:Form width="243" contentBackgroundAlpha="0" backgroundAlpha="0" paddingTop="16" paddingRight="10" paddingBottom="5" paddingLeft="5">
+							<mx:FormItem contentBackgroundAlpha="0" backgroundAlpha="0" label="Name" width="100%" fontSize="10">
+								<s:Label text="{node_selected.node_name}" width="100%" fontSize="10" />
+							</mx:FormItem>
+							<mx:FormItem contentBackgroundAlpha="0" backgroundAlpha="0" label="State" width="100%" dropShadowVisible="false" fontSize="10">
+								<s:Label text="{c_node_summary.convert_state_to_string(node_selected.node_state)}" width="100%" fontSize="10" />
+							</mx:FormItem>
+						</mx:Form>
+					</s:HGroup>
+					<mx:HRule width="298" />
+					<s:HGroup left="5" height="24" paddingLeft="15" contentBackgroundAlpha="0" width="100%">
+						<s:Group toolTip="Total amt. of cpus" height="100%" width="16">
+							<mx:Image source="@Embed('assets/images/gui/cpu.png')" scaleContent="true" autoLoad="true" width="16" height="16" top="4" />
+						</s:Group>
+						<s:Spacer width="5" />
+						<s:Label text="{node_selected.cpus}" height="24" verticalAlign="middle"  fontSize="11"/>
+						<s:Spacer width="5" />
+						<mx:VRule height="100%" />
+						<s:Spacer width="5" />
+						<s:Group toolTip="Total amt. of cores" height="100%" width="16">
+							<mx:Image source="@Embed('assets/images/gui/core.png')" smoothBitmapContent="true" scaleContent="true" autoLoad="true" width="16" height="16" top="4" />
+						</s:Group>
+						<s:Spacer width="5" />
+						<s:Label text="{node_selected.cores}" height="24" verticalAlign="middle"  fontSize="11"/>
+					</s:HGroup>
+					<mx:HRule width="298" />
+					<s:HGroup paddingTop="5" paddingLeft="5" paddingRight="5" paddingBottom="5" width="300" height="100%" left="5">
+						<s:VGroup width="120" height="100%">
+							<s:Label text="Architecture" width="100%" height="15" verticalAlign="middle" />
+							<s:Label text="Boot Time" width="100%" height="15" verticalAlign="middle" />
+							<s:Label text="Slurmd Start Time" width="100%" height="15" verticalAlign="middle" />
+							<s:Label text="Features" width="100%" height="15" verticalAlign="middle" />
+							<s:Label text="Gres" width="100%" height="15" verticalAlign="middle" />
+							<s:Label text="Operating System" width="100%" height="15" verticalAlign="middle" />
+							<s:Label text="Real Memory" width="100%" height="15" verticalAlign="middle" />
+							<s:Label text="Sockets" width="100%" height="15" verticalAlign="middle" />
+							<s:Label text="Threads" width="100%" height="15" verticalAlign="middle" />
+							<s:Label text="Temp Disk" width="100%" height="15" verticalAlign="middle" />
+							<s:Label text="Weight" width="100%" height="15" verticalAlign="middle" />
+							<s:Label text="Reason" width="100%" height="15" verticalAlign="middle" />
+							<s:Label text="Reason Time" width="100%" height="15" verticalAlign="middle" />
+							<s:Label text="Reason Uid" width="100%" height="15" verticalAlign="middle" />
+						</s:VGroup>
+						<s:VGroup width="175" height="100%">
+							<s:Label text="{validate_me(node_selected.arch,lbl_archnode)}" id="lbl_archnode" textAlign="right" height="15" verticalAlign="middle" />
+							<s:Label text="{validate_date(node_selected.boot_time,lbl_btnode)}" id="lbl_btnode" textAlign="right" height="15" verticalAlign="middle" />
+							<s:Label text="{validate_date(node_selected.slurmd_start_time,lbl_sstnode)}" id="lbl_sstnode" textAlign="right" height="15" verticalAlign="middle" />
+							<s:Label text="{validate_array(node_selected.features,lbl_features)}" id="lbl_features" textAlign="right" height="15" verticalAlign="middle" />
+							<s:Label text="{validate_array(node_selected.gres,lbl_gres)}" id="lbl_gres" textAlign="right" height="15" verticalAlign="middle" />
+							<s:Label text="{validate_me(node_selected.os,lbl_osnode)}" id="lbl_osnode" textAlign="right" height="15" verticalAlign="middle" />
+							<s:Label text="{validate_me(node_selected.real_memory + '',lbl_rmnode)}" id="lbl_rmnode" textAlign="right" height="15" verticalAlign="middle" />
+							<s:Label text="{validate_me(node_selected.sockets + '',lbl_socknode)}" id="lbl_socknode" textAlign="right" height="15" verticalAlign="middle" />
+							<s:Label text="{validate_me(node_selected.threads + '',lbl_threadnode)}" id="lbl_threadnode" textAlign="right" height="15" verticalAlign="middle" />
+							<s:Label text="{validate_me(node_selected.tmp_disk + '',lbl_tmpdisknode)}" id="lbl_tmpdisknode" textAlign="right" height="15" verticalAlign="middle" />
+							<s:Label text="{validate_me(node_selected.weight + '',lbl_weightnode)}" id="lbl_weightnode" textAlign="right" height="15" verticalAlign="middle" />
+							<s:Label text="{validate_me(node_selected.reason,lbl_reasnode)}" id="lbl_reasnode" textAlign="right" height="15" verticalAlign="middle" />
+							<s:Label text="{validate_date(node_selected.reason_time,lbl_reastimenode)}" id="lbl_reastimenode" textAlign="right" height="15" verticalAlign="middle" />
+							<s:Label text="{validate_me(node_selected.reason_uid + '',lbl_reasuidnode)}" id="lbl_reasuidnode" textAlign="right" height="15" verticalAlign="middle" />
+						</s:VGroup>
+					</s:HGroup>
+				</s:VGroup>
+				<s:Rect bottom="0" left="0" right="0" height="15">
+					<s:fill>
+						<s:LinearGradient rotation="90">
+							<s:GradientEntry color="#dadada" />
+							<s:GradientEntry color="#c5c5c5" />
+						</s:LinearGradient>
+					</s:fill>
+				</s:Rect>
+			</s:NavigatorContent>
+		</mx:TabNavigator>
+		<s:BorderContainer borderVisible="false" top="462" left="5" width="300" bottom="17" dropShadowVisible="true">
+			<s:Rect top="0" left="0" right="0" bottom="0">
+				<s:fill>
+					<s:SolidColor color="#DDDDDD" />
+				</s:fill>
+			</s:Rect>
+			<mx:BarChart top="5" left="5" right="5" bottom="5" id="pie_node_state" showDataTips="true" dataProvider="{current_sum_shown}">
+				<mx:verticalAxis>
+					<mx:CategoryAxis categoryField="state" id="state_axe_1" ticksBetweenLabels="false" title="States" />
+				</mx:verticalAxis>
+				<mx:series>
+					<mx:BarSeries showDataEffect="{interpolateIn}" xField="amount" yField="state">
+						<mx:fill>
+							<s:LinearGradient rotation="90">
+								<s:GradientEntry color="#444444" alpha=".5" />
+								<s:GradientEntry color="#222222" alpha=".5" />
+							</s:LinearGradient>
+						</mx:fill>
+					</mx:BarSeries>
+				</mx:series>
+			</mx:BarChart>
+		</s:BorderContainer>
+		<s:Group id="node_visuals" top="5" right="5" bottom="5" left="315" >
+			<s:Panel skinClass="be.dragdesign.tchpc.skins.PanelSkin" left="0" right="0" top="0" title="Node Grid">
+				<mx:AdvancedDataGrid horizontalGridLines="true" horizontalGridLineColor="#e6e6e6" verticalGridLineColor="#e6e6e6" id="node_grid" 
+									 verticalScrollPolicy="auto" 
+									 horizontalScrollPolicy="on"
+									 height="450" resizableColumns="false" mouseChildren="true" mouseEnabled="false" useRollOver="false" selectable="false"
+									 width="100%" columnWidth="75" dataProvider="{grid_col}" borderVisible="false" chromeColor="#A6A0A0" contentBackgroundAlpha="0.0" showHeaders="false">
+					<mx:columns>
+						<mx:AdvancedDataGridColumn dataField="node_0" editable="false" itemRenderer="be.dragdesign.tchpc.renderers.node_visual_grid" />
+						<mx:AdvancedDataGridColumn dataField="node_1" editable="false" itemRenderer="be.dragdesign.tchpc.renderers.node_visual_grid" />
+						<mx:AdvancedDataGridColumn dataField="node_2" editable="false" itemRenderer="be.dragdesign.tchpc.renderers.node_visual_grid" />
+						<mx:AdvancedDataGridColumn dataField="node_3" editable="false" itemRenderer="be.dragdesign.tchpc.renderers.node_visual_grid" />
+						<mx:AdvancedDataGridColumn dataField="node_4" editable="false" itemRenderer="be.dragdesign.tchpc.renderers.node_visual_grid" />
+						<mx:AdvancedDataGridColumn />
+					</mx:columns>
+				</mx:AdvancedDataGrid>
+			</s:Panel>
+			<s:Group top="485" left="0" width="{node_grid.width}" bottom="10">
+				<s:Panel skinClass="be.dragdesign.tchpc.skins.PanelSkin" title="Grid Legend" width="150" top="0" left="0">
+					<s:List mouseEnabled="false" verticalScrollPolicy="off" horizontalScrollPolicy="off" mouseChildren="false" height="180" id="my_rect" top="0" left="0" right="0" borderVisible="false" alternatingItemColors="[#d4d4d4,#dddddd]" dataProvider="{legend_arr}" itemRenderer="be.dragdesign.tchpc.renderers.legend_item_renderer" />
+				</s:Panel>
+				<s:Panel skinClass="be.dragdesign.tchpc.skins.PanelSkin" title="Node hostlists (based on selected partition)" top="0" left="155" right="0">
+					<mx:AdvancedDataGrid mouseEnabled="true" editable="true" height="180" id="my_hostlists" top="0" left="0" right="0" alternatingItemColors="[#d4d4d4,#dddddd]" showHeaders="false" dataProvider="{current_hostlist_shown}" borderVisible="false">
+						<mx:columns>
+							<mx:AdvancedDataGridColumn dataField="state_string" width="100" editable="false" />
+							<mx:AdvancedDataGridColumn dataField="hostlist" editable="true" />
+						</mx:columns>
+					</mx:AdvancedDataGrid>
+				</s:Panel>
+			</s:Group>
+		</s:Group>
+		<s:Group top="10" left="{node_visuals.left + node_grid.width - chk_selected.width - 10}" height="30">
+			<s:CheckBox verticalCenter="0" id="chk_selected" label="Show All Nodes" selected="false" click="checkbox1_clickHandler(event)" />
+		</s:Group>
+		<s:BorderContainer id="brdc_partitions" cornerRadius="0" borderVisible="false" backgroundColor="#dddddd" backgroundAlpha="1" alpha="0" bottom="-20" left="0" right="0" mouseOver="bordercontainer1_mouseOverHandler(event)" mouseOut="bordercontainer1_mouseOutHandler(event)" height="26">
+			<s:filters>
+				<s:DropShadowFilter blurY="5" alpha=".25" color="#000000" strength="1" quality="1" distance="0" angle="-90" />
+			</s:filters>
+			<s:List id="dataGrid" dataProvider="{arr_part}" contentBackgroundColor="#dddddd" contentBackgroundAlpha="1" rollOverColor="#cccccc" selectionColor="#cccccc" alternatingItemColors="[#dddddd,#dddddd]"
+					allowMultipleSelection="false" change="dataGrid_changeHandler(event)" itemRenderer="be.dragdesign.tchpc.renderers.partition_listItem" horizontalCenter="0" verticalCenter="0" width="100%" borderVisible="false">
+				<s:layout>
+					<s:HorizontalLayout gap="0" />
+				</s:layout>
+			</s:List>
+		</s:BorderContainer> 
+	</s:Group>
+</s:Group>

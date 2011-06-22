@@ -1,0 +1,407 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:Group xmlns:fx="http://ns.adobe.com/mxml/2009" 
+		 xmlns:s="library://ns.adobe.com/flex/spark" 
+		 xmlns:mx="library://ns.adobe.com/flex/mx" 
+		 xmlns:components="be.dragdesign.tchpc.components.*" width="100%" height="100%" mouseOut="bordercontainer1_mouseOutHandler(event)">
+	<fx:Metadata>
+		[Event(name="hermes",type="be.dragdesign.tchpc.events.HermesEvent")]
+	</fx:Metadata>
+	<fx:Declarations>
+		<mx:SeriesInterpolate id="interpolateIn" duration="500" />
+	</fx:Declarations>
+	<fx:Script>
+		<![CDATA[
+			import be.dragdesign.tchpc.application_objects.c_node_summary;
+			import be.dragdesign.tchpc.events.HermesEvent;
+			import be.dragdesign.tchpc.objects.Partition;
+			import be.dragdesign.tchpc.objects.dashboard_pie;
+			import be.dragdesign.tchpc.objects.partition_job_cpus;
+			import be.dragdesign.tchpc.objects.sinfo_object;
+			import be.dragdesign.tchpc.renderers.UnknownNodeItemRenderer;
+			import be.dragdesign.tchpc.skins.DatagridSkin;
+			
+			import com.greensock.TweenMax;
+			
+			import dragdesign.instances.ModularStorage;
+			
+			import mx.charts.HitData;
+			import mx.charts.LegendItem;
+			import mx.collections.ArrayCollection;
+			import mx.containers.GridItem;
+			import mx.containers.GridRow;
+			import mx.controls.Alert;
+			import mx.events.FlexEvent;
+			import mx.graphics.SolidColor;
+			
+			import spark.events.IndexChangeEvent;
+			import spark.skins.spark.DefaultGridItemRenderer;
+			
+			//
+			//	FIELDS
+			//
+			
+			[Bindable]
+			public var arr_part:ArrayCollection 		= new ArrayCollection();
+			
+			[Bindable]
+			public var arr_filtered:ArrayCollection 	= new ArrayCollection();
+			
+			[Bindable]
+			public var sinfo_col:ArrayCollection 		= new ArrayCollection();
+			
+			[Bindable]
+			public var jobs_col:ArrayCollection			= new ArrayCollection();
+			
+			[Bindable]
+			public var state_col:ArrayCollection 	= new ArrayCollection();
+			
+			public var t:Timer;
+			
+			public var show_all:Boolean = true;
+			
+			public function init_graph():void
+			{
+				var arr:Array = ModularStorage.getInstance().retreiveItemFromStorage("job_cpu_arr");
+				var graph_provider:ArrayCollection = new ArrayCollection();
+				for(var i : int = 0; i < 5; i++)
+				{
+					graph_provider.addItem({
+						name:arr[i].name,
+						jobs_pending:arr[i].jobs_pending,
+						jobs_running:arr[i].jobs_running,
+						cpus_pending:arr[i].cpus_pending,
+						cpus_running:arr[i].cpus_running
+					});
+				}
+				arr_part = graph_provider;
+			}
+			
+			public function init_live_data_stream():void
+			{
+				//	Setting up timer to allow for refreshrates :)
+				t = new Timer(ModularStorage.getInstance().retreiveItemFromStorage("settings").dashboard_refreshtime);
+				t.addEventListener(TimerEvent.TIMER,on_timer_handler,false,0,true);
+				t.start();
+				on_timer_handler(null);	//	First call :)
+			}
+			
+			public function process_job_summary(arr_sum:Array):void
+			{
+				jobs_col = new ArrayCollection();
+				//	Start from 1 ( we want to show the different partitions, not the total ^^ ) 
+				for(var i:int = 1;i < arr_sum.length; i++) 
+				{
+					/*jobs_col.addItem({	Partition: arr_sum[i].name,
+										jobs_pending: arr_sum[i].jobs_pending,
+										cpus_pending: arr_sum[i].cpus_pending,
+										jobs_running: arr_sum[i].jobs_running,
+										cpus_running: arr_sum[i].cpus_running});*/
+					jobs_col.addItem({	Partition: arr_sum[i].name,
+						jobs_pending: arr_sum[i].jobs_pending,
+						cpus_pending: arr_sum[i].cpus_pending,
+						jobs_running: arr_sum[i].jobs_running,
+						cpus_running: arr_sum[i].cpus_running,
+						cpus_available: arr_sum[i].cpus_available,
+						cpus_not_available: arr_sum[i].cpus_not_available,
+						pen_cpu_avg: Math.round(arr_sum[i].cpus_pending/arr_sum[i].jobs_pending),
+						run_cpu_avg: Math.round(arr_sum[i].cpus_running/arr_sum[i].jobs_running)});
+				}
+			}
+			
+			//
+			//	EVENTHANDLERS
+			//
+			
+			protected function on_timer_handler(e:TimerEvent):void
+			{
+				dispatchEvent(new HermesEvent(HermesEvent.HERMES_REQUESTS_YOUR_ATTENTION,"refresh_sinfo"));
+				dispatchEvent(new HermesEvent(HermesEvent.HERMES_REQUESTS_YOUR_ATTENTION,"refresh_jobs"));
+			}
+			
+			protected function button_clickHandler(event:MouseEvent):void
+			{
+				show_all = true;
+				sinfo_grid.dataProvider = sinfo_col;
+				btn_showall.mouseEnabled = false;
+				TweenMax.to(btn_showall,.4,{alpha:.1});
+				dataGrid.selectedIndex = -1;
+				update_sinfo_table();
+			}
+			
+			public function update_sinfo_table():void
+			{
+				if(show_all) {
+					sinfo_grid.dataProvider = sinfo_col;
+					divide_the_pie(sinfo_col);
+				} else {
+					sinfo_grid.dataProvider = null;
+					arr_filtered = new ArrayCollection();
+					//	Create showing list
+					var sel_arr:Array = [];
+					for each(var obj:Object in dataGrid.selectedItems) {
+						sel_arr.push(obj.PartitionName);
+					}
+					//	filter out nodes
+					for each(var s_inner:sinfo_object in sinfo_col) {
+						for each(var str_sort:String in sel_arr) {
+							if(s_inner.partition_name == str_sort) {
+								arr_filtered.addItem(s_inner);
+								break;
+							}
+						} 
+					}
+					sinfo_grid.dataProvider = arr_filtered;
+					divide_the_pie(arr_filtered);
+				}
+			}
+			
+			public function divide_the_pie(arr:ArrayCollection):void
+			{
+				state_col = new ArrayCollection();
+				
+				for(var i:int=0;i<8;i++) {
+					state_col.addItem(new dashboard_pie(i));
+				}
+				
+				var str_processed:Array;
+				var dash_pie:dashboard_pie;
+				
+				for each(var s_inner:sinfo_object in arr) {
+					str_processed = s_inner.s_c_t.split(":");
+					(state_col.getItemAt(c_node_summary.convert_string_to_int(s_inner.nodestate)) as dashboard_pie).update_values(s_inner.cpus,Number(str_processed[1]),s_inner.nodecount);
+				}
+			}
+			
+
+			protected function dataGrid_changeHandler(event:IndexChangeEvent):void
+			{
+				show_all = false;
+				update_sinfo_table();
+				btn_showall.mouseEnabled = true;
+				TweenMax.to(btn_showall,.4,{alpha:.5});
+				btn_showall.enabled = true;
+			}
+			
+			//
+			//	DATA FORMATTING FUNCTIONALITY
+			//
+			
+			public function jobs_data_tips(e:HitData):String
+			{
+				var s:String;
+				var total:uint = e.item.jobs_pending+e.item.jobs_running;
+				s = "<B>" + BarSeries(e.element).displayName + "</B>\n";
+				s += "--------------------------------------\n";
+				
+				switch(BarSeries(e.element).displayName)
+				{
+					case "Jobs Pending":
+						s += "<I>Jobs Pending : </I>" + e.item.jobs_pending + "(" + Math.round((e.item.jobs_pending/total)*100) + " %)\n";
+						break;
+					case "Jobs Running":
+						s += "<I>Jobs Running : </i>" + e.item.jobs_running + "(" + Math.round((e.item.jobs_running/total)*100) + " %)\n";
+						break;
+				}
+				s += "--------------------------------------\n";
+				s += "<I>Total : </I>" + (e.item.jobs_pending + e.item.jobs_running);
+				return s;
+			}
+			
+			public function cpus_data_tips(e:HitData):String
+			{
+				var s:String;
+				var total:uint = e.item.cpus_available + e.item.cpus_not_available +e.item.cpus_running;
+				s = "<B>" + BarSeries(e.element).displayName + "</B>\n";
+				s += "--------------------------------------\n";
+				
+				switch(BarSeries(e.element).displayName)
+				{
+					case "CPUs Running":
+						s += "<I>CPUs Running : </i>" + e.item.cpus_running + "\n";
+						break;
+					case "CPUs Available":
+						s += "<I>CPUs Available : </i>" + e.item.cpus_available + "\n";
+						break;
+					case "CPUs Not Available":
+						s += "<I>CPUs Not Available : </i>" + e.item.cpus_not_available + "\n";
+						break;
+				}
+				s += "--------------------------------------\n";
+				s += "Running (" + int(((e.item.cpus_running/total)*100)*100)/100 + " %)\n";
+				s += "Available (" + int(((e.item.cpus_available/total)*100)*100)/100 + " %)\n";
+				s += "Not Available (" + int(((e.item.cpus_not_available/total)*100)*100)/100 + " %)\n";
+				s += "--------------------------------------\n";
+				s += "<I>Total : </I>" + total;
+				s += "\n\nNote : Currently there are " + e.item.cpus_pending + " cpus requested for future use";
+				return s;
+			}
+			
+			private function pie_label_format(data:Object, field:String, index:Number, percentValue:Number):String {
+				return data.state;  
+			}
+			
+			private function pie_datatip_format(e:HitData):String
+			{
+				var s:String = "<B>" + e.item.state + "</B>\n";
+				s += "--------------------------------------\n";
+				s += "#Nodes: " + e.item.amount + "\n";
+				s += "#Cores: " + e.item.cores + "\n";
+				s += "#Cpus: " + e.item.cpus + "\n";
+				s += "--------------------------------------\n";
+				return s;
+			}
+			
+			public function retrieve_stage_height():int
+			{
+				Alert.show(this.stage.stageHeight + "");
+				return this.stage.stageHeight-70-10;
+			}
+			
+			private function validate_me(item:Object, column:GridColumn):ClassFactory {
+				if(item == null) 
+					return new ClassFactory(DefaultGridItemRenderer);
+				
+				if(item is sinfo_object) {
+					if(item.nodestate != c_node_summary.NODE_STATE_UNKNOWN[1]) 
+						return new ClassFactory(DefaultGridItemRenderer);
+					else
+						return new ClassFactory(UnknownNodeItemRenderer);
+				} else {
+					return new ClassFactory(DefaultGridItemRenderer);
+				}
+			}
+			
+			//	CORE FUNCTIONS
+			
+			public function shutdown_page():void
+			{
+				if(t!=null) {
+					t.stop();
+				}
+			}
+			public function boot_me_up():void
+			{
+				if(t!=null) {
+					t.start();
+				}
+			}
+
+			protected function bordercontainer1_mouseOverHandler(event:MouseEvent):void
+			{
+				TweenMax.to(brdc_partitions,.5,{alpha:1});
+			}
+
+
+			protected function bordercontainer1_mouseOutHandler(event:MouseEvent):void
+			{
+				TweenMax.to(brdc_partitions,.5,{alpha:0});
+			}
+
+		]]>
+	</fx:Script>
+	
+	<s:Group top="0" bottom="0" textAlign="left" left="0" right="0">
+		<s:DataGrid editable="true" id="sinfo_grid" dataProvider="{sinfo_col}" top="0" left="0" width="926" horizontalScrollPolicy="on" verticalScrollPolicy="on" bottom="230" skinClass="be.dragdesign.tchpc.skins.DatagridSkin" borderVisible="false">
+			<s:columns>
+				<s:ArrayList>
+					<s:GridColumn editable="true" minWidth="175" dataField="nodelist" headerText="Nodelist" itemRendererFunction="validate_me" />
+					<s:GridColumn editable="false" dataField="nodecount" width="65" headerText="Nodes" />
+					<s:GridColumn editable="false" dataField="partition_name" width="115" headerText="Partition Name" />
+					<s:GridColumn editable="false" dataField="nodestate" width="65" headerText="State" itemRendererFunction="validate_me" />
+					<s:GridColumn editable="false" dataField="cpus" width="55" headerText="CPUs" />
+					<s:GridColumn editable="false" dataField="s_c_t" width="60" headerText="S:C:T" />
+					<s:GridColumn editable="false" dataField="memory" width="75" headerText="Memory" />
+					<s:GridColumn editable="false" dataField="tmp_disk" width="82" headerText="TMP_Disk" />
+					<s:GridColumn editable="false" dataField="weight" width="70" headerText="Weight" />
+					<s:GridColumn editable="false" dataField="reason" headerText="Reason" minWidth="150" />
+				</s:ArrayList>
+			</s:columns>
+		</s:DataGrid>
+		<s:Label text="Jobs" left="0" width="308" textAlign="center" verticalAlign="middle" height="30" bottom="190" />
+		<s:Label text="Cpus" left="308" width="308" textAlign="center" verticalAlign="middle" height="30" bottom="190" />
+		<s:Label text="Nodes" left="616" width="308" textAlign="center" verticalAlign="middle" height="30" bottom="190" />
+		<mx:Legend dataProvider="{colchart1}" left="0" width="308" direction="horizontal" bottom="170" fontSize="10" paddingLeft="5" paddingRight="0"/>
+		<mx:Legend dataProvider="{colchart2}" left="308" width="308" direction="horizontal" bottom="170" fontSize="10" paddingRight="0" />
+		<mx:BarChart id="colchart1" dataTipFunction="jobs_data_tips" showDataTips="true" dataProvider="{jobs_col}" height="200" bottom="-30" left="0" width="308" type="100%">
+			<mx:verticalAxis>
+				<mx:CategoryAxis categoryField="Partition" id="partition_axe_1" ticksBetweenLabels="false" />
+			</mx:verticalAxis>
+			<mx:series>
+				<mx:BarSeries showDataEffect="{interpolateIn}" xField="jobs_pending" yField="Partition" displayName="Pending">
+					<mx:fill>
+						<s:LinearGradient rotation="90">
+							<s:GradientEntry color="#cc0000" alpha=".3" />
+							<s:GradientEntry color="#bb0000" alpha=".3" />
+						</s:LinearGradient>
+					</mx:fill>
+				</mx:BarSeries>
+				<mx:BarSeries showDataEffect="{interpolateIn}" xField="jobs_running" yField="Partition" displayName="Running">
+					<mx:fill>
+						<s:LinearGradient rotation="90">
+							<s:GradientEntry color="#444444" alpha=".5" />
+							<s:GradientEntry color="#222222" alpha=".5" />
+						</s:LinearGradient>
+					</mx:fill>
+				</mx:BarSeries>
+			</mx:series>
+		</mx:BarChart>
+		<mx:BarChart id="colchart2" dataTipFunction="cpus_data_tips" showDataTips="true" dataProvider="{jobs_col}" height="200" bottom="-30" left="308" width="308" type="100%">
+			<mx:verticalAxis>
+				<mx:CategoryAxis categoryField="Partition" id="partition_axe_2" ticksBetweenLabels="false" title="CPU's" />
+			</mx:verticalAxis>
+			<mx:series>
+				<mx:BarSeries showDataEffect="{interpolateIn}" xField="cpus_running" yField="Partition" displayName="Running">
+					<mx:fill>
+						<s:LinearGradient rotation="90">
+							<s:GradientEntry color="#444444" alpha=".5" />
+							<s:GradientEntry color="#222222" alpha=".5" />
+						</s:LinearGradient>
+					</mx:fill>
+				</mx:BarSeries>
+				<mx:BarSeries showDataEffect="{interpolateIn}" xField="cpus_available" yField="Partition" displayName="Available">
+					<mx:fill>
+						<s:LinearGradient rotation="90">
+							<s:GradientEntry color="#cc0000" alpha=".3" />
+							<s:GradientEntry color="#bb0000" alpha=".3" />
+						</s:LinearGradient>
+					</mx:fill>
+				</mx:BarSeries>
+				<mx:BarSeries showDataEffect="{interpolateIn}" xField="cpus_not_available" yField="Partition" displayName="N/A">
+					<mx:fill>
+						<s:LinearGradient rotation="90">
+							<s:GradientEntry color="#00cc00" alpha=".3" />
+							<s:GradientEntry color="#00bb00" alpha=".3" />
+						</s:LinearGradient>
+					</mx:fill>
+				</mx:BarSeries>
+			</mx:series>
+		</mx:BarChart>
+		<mx:BarChart  height="200" bottom="-30" left="616" width="308" id="pie_node_state" dataTipFunction="pie_datatip_format" showDataTips="true" dataProvider="{state_col}">
+			<mx:verticalAxis>
+				<mx:CategoryAxis categoryField="state" id="state_axe_1" ticksBetweenLabels="false" title="States" />
+			</mx:verticalAxis>
+			<mx:series>
+				<mx:BarSeries showDataEffect="{interpolateIn}" xField="amount" yField="state">
+					<mx:fill>
+						<s:LinearGradient rotation="90">
+							<s:GradientEntry color="#444444" alpha=".5" />
+							<s:GradientEntry color="#222222" alpha=".5" />
+						</s:LinearGradient>
+					</mx:fill>
+				</mx:BarSeries>
+			</mx:series>
+		</mx:BarChart>
+	</s:Group>
+	<s:BorderContainer id="brdc_partitions" cornerRadius="0" borderVisible="false" backgroundColor="#dddddd" backgroundAlpha="1" alpha="0" bottom="-36" left="0" right="0" mouseOver="bordercontainer1_mouseOverHandler(event)" mouseOut="bordercontainer1_mouseOutHandler(event)" height="26">
+		<s:filters>
+			<s:DropShadowFilter blurY="5" alpha=".25" color="#000000" strength="1" quality="1" distance="0" angle="-90" />
+		</s:filters>
+		<s:List id="dataGrid" dataProvider="{arr_part}" contentBackgroundColor="#dddddd" contentBackgroundAlpha="1" rollOverColor="#cccccc" selectionColor="#cccccc" alternatingItemColors="[#dddddd,#dddddd]"
+				allowMultipleSelection="true" change="dataGrid_changeHandler(event)" itemRenderer="be.dragdesign.tchpc.renderers.partition_listItem" horizontalCenter="0" verticalCenter="0" width="100%" borderVisible="false">
+			<s:layout>
+				<s:HorizontalLayout gap="0" />
+			</s:layout>
+		</s:List>
+		<s:Button mouseEnabled="false" alpha=".25" id='btn_showall' click="button_clickHandler(event)" top="2" right="5" bottom="2" label="Show all" />
+	</s:BorderContainer> 
+</s:Group>

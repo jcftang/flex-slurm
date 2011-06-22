@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:Group xmlns:fx="http://ns.adobe.com/mxml/2009" 
+		 xmlns:s="library://ns.adobe.com/flex/spark" 
+		 xmlns:mx="library://ns.adobe.com/flex/mx" width="600" height="290" contentBackgroundColor="#E4E4E4">
+
+	<fx:Script>
+		<![CDATA[
+			import be.dragdesign.tchpc.events.HermesEvent;
+			
+			import flash.net.navigateToURL;
+			protected function linkbutton1_clickHandler(event:MouseEvent):void
+			{
+				navigateToURL(new URLRequest("http://www.gnu.org/licenses/gpl-2.0.html"),"_blank");
+			}
+
+			protected function linkbutton2_clickHandler(event:MouseEvent):void
+			{
+				navigateToURL(new URLRequest("https://computing.llnl.gov/linux/slurm/"),"_blank");
+			}
+
+
+			protected function linkbutton3_clickHandler(event:MouseEvent):void
+			{
+				navigateToURL(new URLRequest("http://www.tchpc.tcd.ie"),"_blank");
+			}
+
+
+			protected function button1_clickHandler(event:MouseEvent):void
+			{
+				dispatchEvent(new HermesEvent(HermesEvent.HERMES_REPORTS_FOR_DUTY,"close_me"));
+			}
+
+		]]>
+	</fx:Script>
+
+	<fx:Declarations>
+		<!-- Place non-visual elements (e.g., services, value objects) here -->
+	</fx:Declarations>
+	<s:Panel skinClass="be.dragdesign.tchpc.skins.PanelSkin" top="0" left="0" right="0" bottom="0" title="About Flurm" cornerRadius="4" borderVisible="false" dropShadowVisible="false">
+		<s:controlBarContent>
+		
+		</s:controlBarContent>
+		<s:Rect top="0" left="0" right="0" bottom="0">
+			<s:fill>
+				<s:LinearGradient rotation="90">
+					<s:GradientEntry color="#f4f4f4" alpha="1" />
+					<s:GradientEntry color="#e4e4e4" alpha="1" />
+				</s:LinearGradient>
+			</s:fill>
+		</s:Rect>
+		<mx:Image left="20" right="20" bottom="9" source="@Embed('assets/images/icons/tchpc_icon350x350.png')" scaleContent="true" smoothBitmapContent="true"  height="220"/>
+		<s:Group left="290" top="24" right="18" height="214">
+			<s:Label top="0" left="0" text="Flurm" fontWeight="bold" fontSize="26"  fontFamily="Verdana" color="#44474D" textDecoration="none" verticalAlign="middle"/>
+			<s:Label x="88" y="16.5" text="1.0.0" fontSize="10" fontFamily="Times New Roman" color="#44474D"/>
+			<s:Label x="3" y="46" text="Flurm monitors clusters running a SLURM installation and gives a clear and detailed visual overview of the current cluster status." width="280" height="59" color="#44474D" fontFamily="Arial"/>
+			<s:Label x="0" y="99" text="This application was developed by Vermeulen Peter a senior student in new Media and Communication Technology (HoWest) as part of an internship programme at the Trinity Centre for High Performance Computing - Trinity College Dublin." width="290" height="75" color="#44474D" fontFamily="Arial"/>
+			<mx:LinkButton x="88" bottom="10" label="License Information" click="linkbutton1_clickHandler(event)" textDecoration="underline" fontSize="10" paddingLeft="0" paddingRight="0"/>
+			<mx:LinkButton x="1" bottom="10" label="TCHPC" textDecoration="underline" click="linkbutton3_clickHandler(event)" fontSize="10" paddingLeft="0" paddingRight="0"/>
+			<mx:LinkButton x="43" bottom="10" label="SLURM" textDecoration="underline" click="linkbutton2_clickHandler(event)" fontSize="10" paddingLeft="0" paddingRight="0"/>
+			<s:Button right="10" bottom="10" label="Close" click="button1_clickHandler(event)" />
+		</s:Group>
+	</s:Panel>
+</s:Group>

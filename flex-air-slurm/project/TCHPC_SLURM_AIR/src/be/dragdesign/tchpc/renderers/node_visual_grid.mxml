@@ -1,0 +1,151 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:MXAdvancedDataGridItemRenderer xmlns:fx="http://ns.adobe.com/mxml/2009" 
+								  xmlns:s="library://ns.adobe.com/flex/spark" 
+								  xmlns:mx="library://ns.adobe.com/flex/mx" 
+								  focusEnabled="true" currentState="NOTHING" mouseUp="mxadvanceddatagriditemrenderer1_mouseUpHandler(event)" creationComplete="mxadvanceddatagriditemrenderer1_creationCompleteHandler(event)" mouseOver="mxadvanceddatagriditemrenderer1_mouseOverHandler(event)" mouseOut="mxadvanceddatagriditemrenderer1_mouseOutHandler(event)">
+	<s:states>
+		<s:State name="NOTHING" />
+		<s:State name="UNKNOWN" />
+		<s:State name="DOWN" />
+		<s:State name="IDLE" />
+		<s:State name="ALLOCATED" />
+		<s:State name="ERROR" />
+		<s:State name="MIXED" />
+		<s:State name="FUTURE" />
+		<s:State name="END" />
+	</s:states>
+	<fx:Script>
+		<![CDATA[
+			import be.dragdesign.tchpc.application_objects.c_node_summary;
+			import be.dragdesign.tchpc.events.HermesEvent;
+			import be.dragdesign.tchpc.events.HermesEvent_Adv;
+			import be.dragdesign.tchpc.objects.Node;
+			import be.dragdesign.tchpc.objects.grid_row;
+			
+			import com.greensock.TweenMax;
+			
+			import mx.core.Application;
+			import mx.core.FlexGlobals;
+			import mx.events.FlexEvent;
+			
+			public var part_name:String;
+			public var node_name:String;
+			
+			public function place_request(o:Object):String
+			{
+				this.visible = false;
+				if(o != null && o !="") {
+					this.visible = true;
+					var a:Array = (o as String).split("|");
+					this.part_name = a[2];
+					update_state(Number(a[0]));
+					node_name = a[1];
+					on_hermes_from_parent_page(new HermesEvent_Adv(HermesEvent_Adv.HERMES_REQUESTS_YOUR_ATTENTION,"update_item_rends",null));
+					return a[1];
+				} else {
+					return "OMFG";
+				}
+				
+			}
+			
+			public function update_state(i:Number):void
+			{
+				clr_data1.alpha = .5;
+				clr_data2.alpha = .5;
+				if(i>c_node_summary.SLURM_LAST_STATE[0]) {
+					this.currentState = "UNKNOWN";
+					return;
+				} 
+				switch(i) {
+					case c_node_summary.NODE_STATE_UNKNOWN[0]:
+						this.currentState = "UNKNOWN";
+						break;
+					case c_node_summary.NODE_STATE_DOWN[0]:
+						this.currentState = "DOWN";
+						break;
+					case c_node_summary.NODE_STATE_IDLE[0]:
+						this.currentState = "IDLE";
+						break;
+					case c_node_summary.NODE_STATE_ALLOCATED[0]:
+						this.currentState = "ALLOCATED";
+						break;
+					case c_node_summary.NODE_STATE_ERROR[0]:
+						this.currentState = "ERROR";
+						break;
+					case c_node_summary.NODE_STATE_MIXED[0]:
+						this.currentState = "MIXED";
+						break;
+					case c_node_summary.NODE_STATE_FUTURE[0]:
+						this.currentState = "FUTURE";
+						break;
+					case c_node_summary.NODE_STATE_END[0]:
+						this.currentState = "END";
+						break;
+					default:
+						this.currentState = "NOTHING";
+						break;
+				}
+			}
+
+			protected function mxadvanceddatagriditemrenderer1_mouseOverHandler(event:MouseEvent):void
+			{
+				if(!isup && this.node_name!=null) {
+					TweenMax.to(mouse_handler,.5,{alpha:1});
+				}
+			}
+
+
+			protected function mxadvanceddatagriditemrenderer1_mouseOutHandler(event:MouseEvent):void
+			{
+				if(!isup && this.node_name!=null) {
+					TweenMax.to(mouse_handler,.5,{alpha:0});
+				}
+			}
+
+
+			protected function mxadvanceddatagriditemrenderer1_creationCompleteHandler(event:FlexEvent):void
+			{
+				FlexGlobals.topLevelApplication.nodes_page.addEventListener(HermesEvent_Adv.HERMES_REQUESTS_YOUR_ATTENTION,on_hermes_from_parent_page,false,0,true);
+			}
+			
+			private var isup:Boolean = false;
+			
+			protected function on_hermes_from_parent_page(e:HermesEvent_Adv):void
+			{
+				if(e.str_my_name=="update_item_rends") {
+					if(node_name == FlexGlobals.topLevelApplication.nodes_page.node_selected.node_name) {
+						isup = true;
+						TweenMax.to(mouse_handler,.5,{alpha:1});
+					} else {
+						TweenMax.to(mouse_handler,.5,{alpha:0});
+					}
+				}
+			}
+
+
+			protected function mxadvanceddatagriditemrenderer1_mouseUpHandler(event:MouseEvent):void
+			{
+				if(node_name!=null) {
+					isup = true;
+					TweenMax.to(mouse_handler,.5,{alpha:1});
+					dispatchEvent(new HermesEvent_Adv(HermesEvent_Adv.HERMES_REQUESTS_YOUR_ATTENTION,"select_node",[this.node_name],true,true));
+				}
+			}
+
+		]]>
+	</fx:Script>
+	<s:Rect id="rct_data" top="-1" left="1" right="0" bottom="-2">
+		<s:fill>
+			<s:LinearGradient id="clr_data" rotation="90">
+				<s:GradientEntry color.NOTHING="#ffffff" color.UNKNOWN="#ffa5a5" color.DOWN="#ffa5a5" color.ERROR="#ffa5a5" color.IDLE="#a1ff8b" color.ALLOCATED="#ffbc5b" color.MIXED="#aeaeae" color.FUTURE="#8eb8fd" color.END="#8eb8fd" alpha="0" id="clr_data1" />
+				<s:GradientEntry color.NOTHING="#ffffff" color.UNKNOWN="#ff8181" color.DOWN="#ff8181" color.ERROR="#ff8181" color.IDLE="#81ff64" color.ALLOCATED="#fdad3a" color.MIXED="#949494" color.FUTURE="#69a0fb" color.END="#69a0fb" alpha="0" id="clr_data2" />
+			</s:LinearGradient>
+		</s:fill>
+	</s:Rect>
+	<s:Rect top="-1" left="1" right="0" bottom="-2">
+		<s:stroke>
+			<s:SolidColorStroke id="mouse_handler" color="#80ceff" weight="3" />
+		</s:stroke>
+	</s:Rect>
+	<s:Label id="lblData" top="0" verticalAlign="middle" textAlign="center" left="0" right="0" bottom="0" text="{place_request(listData.label)}"/>
+</s:MXAdvancedDataGridItemRenderer>

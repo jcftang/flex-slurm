@@ -1,0 +1,94 @@
+/* CSS file */
+@namespace s "library://ns.adobe.com/flex/spark";
+@namespace mx "library://ns.adobe.com/flex/mx";
+@namespace containers "com.arc90.flexlib.containers.*";
+
+s|WindowedApplication
+{
+	skinClass: ClassReference("be.dragdesign.tchpc.skins.WindowedApplicationWithBackground");
+	font-family: 				Verdana;
+	font-size: 					12;
+	color: 						#333333;
+	background-gradient-alphas: 0, 0;
+	background-color: 			#666666;
+	font-weight:				normal;
+	modal-transparency-color:	#000000;
+	modal-transparency-blur:	2;
+}
+
+mx|CursorManager
+{
+	busy-cursor: Embed("../../../../assets/swf/cursor.swf");
+}
+
+s|Label
+{
+	font-family:				Verdana;
+	font-size:					10;
+}
+
+s|DataGrid
+{
+	font-family:				Verdana;
+	font-size:					9;
+}
+
+mx|AdvancedDataGrid {
+	font-family:				Verdana;
+	font-size:					9;
+}
+mx|AdvancedDataGridItemRenderer {
+	color:#000000;
+}
+
+mx|AdvancedDataGridHeaderRenderer {
+	chrome-color:#a6a0a0;
+	color:#ffffff;
+	separator-color:#696969;
+}
+
+s|Panel, mx|TabNavigator
+{
+	skinClass: ClassReference("be.dragdesign.tchpc.skins.CollapsePanel");
+	border-color:#777777;
+	border-alpha:.5;
+	drop-shadow-visible:true;
+	background-color: #dddddd;
+	min-height:0px;
+	content-background-color: #dddddd;
+}
+
+.tab
+{
+	up-skin: ClassReference("be.dragdesign.tchpc.skins.TabBarButtonSkin");
+	down-skin: ClassReference("be.dragdesign.tchpc.skins.TabBarButtonSkin");
+	over-skin: ClassReference("be.dragdesign.tchpc.skins.TabBarButtonSkin");
+	
+	selected-up-skin: ClassReference("be.dragdesign.tchpc.skins.TabBarButtonSkin");
+	selected-down-skin: ClassReference("be.dragdesign.tchpc.skins.TabBarButtonSkin");
+	selected-over-skin: ClassReference("be.dragdesign.tchpc.skins.TabBarButtonSkin");
+	border-style:solid;
+	border-color:#777777;
+	border-alpha:.5;
+	header-height:30;
+	font-family:				Verdana;
+	font-size:					10;
+	font-weight: bold;
+}
+
+s|NavigatorContent
+{
+	background-color:#DDDDDD;
+	content-background-color:#DDDDDD;
+}
+
+.full_height_panel_collapsable 
+{
+	skinClass: ClassReference("be.dragdesign.tchpc.skins.CollapsePanel");
+}
+
+s|Button {
+	chrome-color: #999999;
+	color:#FFFFFF;
+	corner-radius:0;
+}

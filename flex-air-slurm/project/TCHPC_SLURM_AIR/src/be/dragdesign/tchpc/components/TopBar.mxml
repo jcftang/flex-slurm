@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:Group xmlns:fx="http://ns.adobe.com/mxml/2009" 
+		 xmlns:s="library://ns.adobe.com/flex/spark" 
+		 xmlns:mx="library://ns.adobe.com/flex/mx" xmlns:components="be.dragdesign.tchpc.components.*">
+	<s:layout>
+		<s:HorizontalLayout/>
+	</s:layout>
+	<fx:Metadata>
+		[Event(name="hermes",type="be.dragdesign.tchpc.events.HermesEvent")]
+	</fx:Metadata>
+	<fx:Script>
+		<![CDATA[
+			import be.dragdesign.tchpc.events.HermesEvent;
+			
+			import flash.net.navigateToURL;
+
+			protected function iconhl_bar1_hermesHandler(event:HermesEvent):void
+			{
+				dispatchEvent(event);
+			}
+
+
+			protected function image1_clickHandler(event:MouseEvent):void
+			{
+				navigateToURL(new URLRequest("http://www.tchpc.tcd.ie"),"_blank");
+			}
+
+
+			protected function image2_clickHandler(event:MouseEvent):void
+			{
+				navigateToURL(new URLRequest("http://www.tcd.ie"),"_blank");
+			}
+
+		]]>
+	</fx:Script>
+	<fx:Declarations>
+		<!-- Place non-visual elements (e.g., services, value objects) here -->
+	</fx:Declarations>
+	<mx:Spacer width="40" />
+	<mx:Image source="@Embed('assets/images/gui/tchpc_logo.png')" buttonMode="true" click="image1_clickHandler(event)" />
+	<mx:Spacer width="100%" />
+	<s:Group horizontalCenter="0">
+		<mx:Image width="12" source="@Embed('assets/images/gui/Iconbar_left.png')" left="0" />
+		<components:IconHL_Bar hermes="iconhl_bar1_hermesHandler(event)" left="12" right="12" />
+		<mx:Image width="12" source="@Embed('assets/images/gui/Iconbar_right.png')" right="0" />
+	</s:Group>
+	<mx:Spacer width="100%" />
+	<mx:Image source="@Embed('assets/images/gui/tcd_logo.png')" buttonMode="true" click="image2_clickHandler(event)" />
+</s:Group>

@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:ItemRenderer xmlns:fx="http://ns.adobe.com/mxml/2009" 
+				xmlns:s="library://ns.adobe.com/flex/spark" 
+				xmlns:mx="library://ns.adobe.com/flex/mx" 
+				autoDrawBackground="true">
+	<fx:Script>
+		<![CDATA[
+			import be.dragdesign.tchpc.objects.legend_item;
+		]]>
+	</fx:Script>
+	
+	<s:Group width="150">
+		<s:Rect top="4" left="10" bottom="4" width="8" height="14">
+			<s:fill>
+				<s:SolidColor color="{(data as legend_item).box_color}" />
+			</s:fill>
+		</s:Rect>
+	</s:Group>
+	<s:Label left="22" right="5" top="0" bottom="0" verticalAlign="middle" text="{(data as legend_item).label_str}"/>
+</s:ItemRenderer>

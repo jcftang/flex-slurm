@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:Panel xmlns:fx="http://ns.adobe.com/mxml/2009" 
+		 xmlns:s="library://ns.adobe.com/flex/spark" 
+		 xmlns:mx="library://ns.adobe.com/flex/mx" title="Slurm Status">
+	<s:layout>
+		<s:BasicLayout/>
+	</s:layout>
+	<fx:Declarations>
+		<!-- Place non-visual elements (e.g., services, value objects) here -->
+	</fx:Declarations>
+	<fx:Metadata>
+		[Event(name="hermes",type="be.dragdesign.tchpc.events.HermesEvent")]
+	</fx:Metadata>
+	<fx:Script>
+		<![CDATA[
+			import be.dragdesign.tchpc.events.HermesEvent;
+			
+			[Embed(source = "assets/images/gui/on.png")]private var ok:Class;
+			[Embed(source = "assets/images/gui/off.png")]private var no:Class;
+			
+			public var slurmctld:Boolean 	= true;
+			public var slurmd:Boolean 		= true;
+			
+			public function update_slurm_status(slurmctld:uint,slurmd:uint):void
+			{
+				if(slurmctld==0) {
+					this.slurmctld = true;
+					slurmctld_image.source = new ok() as Bitmap;
+				} else {
+					this.slurmctld = false;
+					slurmctld_image.source = new no() as Bitmap;
+				}
+				if(slurmd==0) {
+					this.slurmd = true;
+					slurmd_image.source = new ok() as Bitmap;
+				} else {
+					this.slurmd = false;
+					slurmd_image.source = new no() as Bitmap;
+				}
+			}
+		]]>
+	</fx:Script>
+	<s:controlBarContent>
+	
+	</s:controlBarContent>
+	<s:VGroup top="0" bottom="0" left="0" right="0" gap="0">
+		<s:Group height="50%" top="0" width="100%">
+			<s:Label text="Prim. Controller" left="5"  width="70" height="100%" verticalAlign="middle"/>
+			<mx:Image id="slurmctld_image" width="20" height="20" smoothBitmapContent="true" verticalCenter="0" right="5" source="{new ok() as Bitmap}" />
+		</s:Group>
+		<s:Group height="50%" bottom="0" width="100%">
+			<s:Label text="Sec. Controller" left="5" width="70" height="100%" verticalAlign="middle"/>
+			<mx:Image id="slurmd_image" width="20" height="20" smoothBitmapContent="true" verticalCenter="0" right="5" source="{new ok() as Bitmap}"  />
+		</s:Group>
+	</s:VGroup>
+</s:Panel>

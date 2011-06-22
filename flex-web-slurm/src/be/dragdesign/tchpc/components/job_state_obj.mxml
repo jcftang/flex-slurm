@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:Group xmlns:fx="http://ns.adobe.com/mxml/2009" 
+		 xmlns:s="library://ns.adobe.com/flex/spark" 
+		 xmlns:mx="library://ns.adobe.com/flex/mx" currentState="DEFAULT">
+	<fx:Declarations>
+		<!-- Place non-visual elements (e.g., services, value objects) here -->
+	</fx:Declarations>
+	
+	<fx:Script>
+		<![CDATA[
+			import be.dragdesign.tchpc.objects.Job;
+			
+			[Bindable]
+			public var state:String;
+			
+			public function validate_value(str:String):String {
+				switch(str) {
+					case "RUNNING":
+						this.currentState = "RUNNING";
+						break;
+					case "PENDING":
+						this.currentState = "PENDING";
+						break;
+					case "COMPLETED":
+						this.currentState = "COMPLETED";
+						break;
+					default:
+						break;
+				}
+				return str;
+			}
+		]]>
+	</fx:Script>
+	<s:states>
+		<s:State name="COMPLETED"/>
+		<s:State name="PENDING"/>
+		<s:State name="RUNNING"/>
+		<s:State name="DEFAULT"/>
+	</s:states>
+	<s:Rect top="0" left="0" right="0" bottom="0">
+		<s:fill>
+			<s:SolidColor color.RUNNING="#b6ffa5" color.PENDING="#ffdaa5" color.COMPLETED="#a5d4ff" color.DEFAULT="0x000000" alpha="0.5" />
+		</s:fill>
+	</s:Rect>
+	<s:Label id="lblData" verticalAlign="middle" color="#000000" color.DEFAULT="#ffffff" textAlign="center" top="0" left="0" right="0" bottom="0" text="{this.validate_value(state)}" />
+</s:Group>

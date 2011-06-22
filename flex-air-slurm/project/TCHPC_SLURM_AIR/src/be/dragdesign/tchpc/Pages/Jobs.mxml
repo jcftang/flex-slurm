@@ -1,0 +1,811 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:Group xmlns:fx="http://ns.adobe.com/mxml/2009" 
+		 xmlns:s="library://ns.adobe.com/flex/spark" 
+		 xmlns:mx="library://ns.adobe.com/flex/mx"
+		 xmlns:components="be.dragdesign.tchpc.components.*"
+		 xmlns:rends="be.dragdesign.tchpc.renderers.*" creationComplete="group1_creationCompleteHandler(event)">
+	<fx:Metadata>
+		[Event(name="hermes",type="be.dragdesign.tchpc.events.HermesEvent")]
+		[Event(name="hermes_reporting", type="be.dragdesign.tchpc.events.HermesEvent")]
+	</fx:Metadata>
+	<fx:Declarations>
+		<mx:SeriesInterpolate id="interpolateIn" duration="500" />
+	</fx:Declarations>
+	<fx:Script>
+		<![CDATA[
+			import be.dragdesign.tchpc.application_objects.c_node_summary;
+			import be.dragdesign.tchpc.components.job_detail_window;
+			import be.dragdesign.tchpc.components.visible_column_window;
+			import be.dragdesign.tchpc.events.HermesEvent;
+			import be.dragdesign.tchpc.events.HermesEvent_Adv;
+			import be.dragdesign.tchpc.objects.Job;
+			import be.dragdesign.tchpc.objects.jobs_page_summary_object;
+			import be.dragdesign.tchpc.renderers.checkbox_renderer;
+			
+			import com.greensock.TweenMax;
+			
+			import dragdesign.Functions;
+			import dragdesign.instances.ModularStorage;
+			
+			import mx.collections.ArrayCollection;
+			import mx.collections.Sort;
+			import mx.controls.advancedDataGridClasses.AdvancedDataGridColumn;
+			import mx.controls.dataGridClasses.DataGridColumn;
+			import mx.events.CloseEvent;
+			import mx.events.DragEvent;
+			import mx.events.FlexEvent;
+			import mx.events.IndexChangedEvent;
+			import mx.events.ListEvent;
+			import mx.events.StateChangeEvent;
+			import mx.managers.DragManager;
+			import mx.rpc.events.ResultEvent;
+			import mx.states.AddItems;
+			
+			import nl.demonsters.debugger.MonsterDebugger;
+			
+			import spark.components.gridClasses.GridColumn;
+			import spark.events.IndexChangeEvent;
+			
+			
+			//
+			//	FIELDS
+			//
+			
+			[Bindable]
+			public var arr_part:ArrayCollection 		= new ArrayCollection();
+			
+			[Bindable]
+			public var jobs_col:ArrayCollection			= new ArrayCollection();
+			
+			[Bindable]
+			public var arr_filtered:ArrayCollection 	= new ArrayCollection();
+			
+			[Bindable]
+			public var user_col:ArrayCollection			= new ArrayCollection();
+			
+			[Bindable]
+			public var account_col:ArrayCollection		= new ArrayCollection();
+			
+			[Bindable]
+			public var group_col:ArrayCollection		= new ArrayCollection();
+			
+			[Bindable]
+			public var chart_arr:ArrayCollection		= new ArrayCollection();
+			
+			[Bindable]
+			public var sum_arr:ArrayCollection			= new ArrayCollection();
+			
+			[Bindable]
+			public var sum_arr_2:ArrayCollection		= new ArrayCollection();
+			
+			public var t:Timer;
+			
+			//	Necessary for the refresh :) 
+			[Bindable]
+			public var startIndex:Number = 0;
+			[Bindable]
+			public var range:Number = 250;
+			[Bindable]
+			public var part_selected:Array = new Array();
+			
+			public var f:Functions = new Functions();
+			
+			public var current_selected_navigator:String = "user_nav";
+			
+			[Bindable]
+			public var columns_col:ArrayCollection = new ArrayCollection();
+			
+			public var first_run:Boolean = true;
+			
+			//	Extra window stuff :)
+			private var win:visible_column_window;
+			private var win_detail:job_detail_window;
+			
+			
+			//
+			//	FUNCTIONS
+			//
+			
+			public function shutdown_page():void
+			{
+				if(t!=null) {
+					t.stop();
+				}
+			}
+			
+			public function boot_me_up():void
+			{
+				if(t!=null) {
+					t.start();
+				}
+			}
+			
+			public function init_live_data_stream():void
+			{
+				//	Setting up timer to allow for refreshrates :)
+				t = new Timer(ModularStorage.getInstance().retreiveItemFromStorage("settings").dashboard_refreshtime);
+				t.addEventListener(TimerEvent.TIMER,on_timer_handler,false,0,true);
+				t.start();
+				on_timer_handler(null);	//	First call :)
+			}
+			
+			public function process_new_list(event:ResultEvent):void
+			{
+				var job_tmp:Job;
+				
+				userGrid.dataProvider 		= null;
+				accountGrid.dataProvider 	= null;
+				groupGrid.dataProvider		= null;
+				
+				user_col 				= new ArrayCollection();
+				account_col 			= new ArrayCollection();
+				group_col				= new ArrayCollection();
+				
+				var sel_part_arr:Array = [];
+				sum_arr_2 = new ArrayCollection();
+				var d:Dictionary = new Dictionary();
+				
+				sum_arr = new ArrayCollection();
+				var obj:Object;
+				if(dataGrid.selectedIndex != -1) {
+					for each(obj in dataGrid.selectedItems) {
+						sel_part_arr.push(obj.PartitionName);
+					}
+				}
+				
+				var inner:Object;
+				if(sel_part_arr.length != 0) {
+					for each(inner in event.result) {
+						job_tmp = new Job();
+						job_tmp.parse_raw_php_object(inner);
+						for each(var str_sort:String in sel_part_arr) {
+							if(job_tmp.Partition == str_sort) {
+								account_col.addItem(job_tmp.Account);
+								group_col.addItem(job_tmp.GroupId);
+								user_col.addItem(job_tmp.UserId);
+								break;
+							}	
+						}
+						switch(job_tmp.JobState) {
+							case "RUNNING":
+								if(d[job_tmp.UserId] == null) {
+									d[job_tmp.UserId] = new jobs_page_summary_object(job_tmp.UserId);
+								}
+								(d[job_tmp.UserId] as jobs_page_summary_object).update_values(1,0,job_tmp.NumCpus,job_tmp.NumNodes);
+								break;
+							default:
+								break;
+						}
+						jobs_col.addItem(job_tmp);
+					}
+				} else {
+					for each(inner in event.result) {
+						job_tmp						= new Job();
+						job_tmp.parse_raw_php_object(inner);
+						user_col.addItem(job_tmp.UserId);
+						account_col.addItem(job_tmp.Account);
+						group_col.addItem(job_tmp.GroupId);
+						jobs_col.addItem(job_tmp);
+						switch(job_tmp.JobState) {
+							case "RUNNING":
+								if(d[job_tmp.UserId] == null) {
+									d[job_tmp.UserId] = new jobs_page_summary_object(job_tmp.UserId);
+								}
+								(d[job_tmp.UserId] as jobs_page_summary_object).update_values(1,0,job_tmp.NumCpus,job_tmp.NumNodes);
+								break;
+							default:
+								break;
+						}
+					}	
+				}
+				
+				userGrid.dataProvider = removeDuplicates(user_col);
+				accountGrid.dataProvider = removeDuplicates(account_col);
+				groupGrid.dataProvider	= removeDuplicates(group_col);
+				
+				var key:Object;
+				for(key in d) {
+					sum_arr.addItem(d[key]);
+					sum_arr_2.addItem(d[key]);
+				}
+				
+				job_grid.dataProvider = gimme_some_magic(jobs_col);
+			}
+			
+			public function divide_ze_goodies():void
+			{
+				job_grid.dataProvider = null;
+				arr_filtered = new ArrayCollection();
+				//	Create showing list
+				var sel_part_arr:Array = [];
+				
+				if(dataGrid.selectedIndex != -1) {
+					for each(var obj:Object in dataGrid.selectedItems) {
+						sel_part_arr.push(obj.PartitionName);
+					}
+				}
+				
+				//	filter out nodes
+				var ob:Job;
+				if(sel_part_arr.length != 0 && sel_part_arr != null && jobs_col.length!=0 && jobs_col != null) {
+					for each(ob in jobs_col) {
+						for each(var str_sort:String in sel_part_arr) {
+							if(ob.Partition == str_sort) {
+								arr_filtered.addItem(ob);
+								break;
+							}
+						}
+					}
+					job_grid.dataProvider = gimme_some_magic(arr_filtered);
+				} else {
+					job_grid.dataProvider = gimme_some_magic(jobs_col);
+				}
+			}
+			
+			public function iterate_me(vec:Vector.<Object>,tmp_filter:ArrayCollection,prop:String):ArrayCollection
+			{
+				var arr:Array = [];
+				var tmp:String = "";
+				var res_col:ArrayCollection = new ArrayCollection();
+				
+				for each(tmp in vec) {
+					arr.push(tmp);
+				}
+				
+				if(arr.length != 0) {
+					var obj:Job;
+					var tmp_inner:String;
+					for each(obj in tmp_filter) {
+						for each(tmp_inner in arr) {
+							if(tmp_inner == obj[prop]) {
+								res_col.addItem(obj);
+								break;
+							}
+						}
+					}
+				}
+				return res_col;
+			}
+			
+			public function gimme_some_magic(arr_filtered:ArrayCollection):ArrayCollection
+			{
+				var tmp:ArrayCollection = new ArrayCollection();
+				switch(current_selected_navigator) {
+					case "account_nav":
+						if(accountGrid.selectedIndex == -1) {
+							return arr_filtered;
+						}
+						tmp = iterate_me(accountGrid.selectedItems,arr_filtered,"Account");
+						break;
+					case "groups_nav":
+						if(groupGrid.selectedIndex == -1) { 
+							return arr_filtered;
+						}
+						tmp = iterate_me(groupGrid.selectedItems,arr_filtered,"GroupId");
+						break;
+					case "user_nav":
+						if(userGrid.selectedIndex == -1) { 
+							return arr_filtered;
+						}			
+						tmp = iterate_me(userGrid.selectedItems,arr_filtered,"UserId");
+						break;
+				}
+				
+				arr_filtered = tmp;
+			
+				if(tmp.length == 0) {
+					return null;
+				} else {
+					return tmp;
+				}
+			}
+			
+			public function reset_grids(is_datagrid:Boolean=false):void {
+				var g:List;
+				var b:Button;
+				if(is_datagrid) {
+					for each(g in [dataGrid,userGrid,groupGrid,accountGrid]) {
+						g.selectedIndex = -1;
+					}
+					for each(b in [btn_showall,btn_showall2,btn_showall3,btn_showall4]) {
+						b.mouseEnabled 	= false;
+						b.enabled 		= false;
+					}
+				} else {
+					for each(g in [userGrid,groupGrid,accountGrid]) {
+						g.selectedIndex = -1;
+					}
+					for each(b in [btn_showall2,btn_showall3,btn_showall4]) {
+						b.mouseEnabled 	= false;
+						b.enabled 		= false;
+					}
+				}
+			}
+			
+			public function removeDuplicates(arr:ArrayCollection):ArrayCollection
+			{
+				var tmp_arr:ArrayCollection = new ArrayCollection();
+				var s:String;
+				for each(s in arr) {
+					if(tmp_arr.contains(s)) {
+						continue;
+					} 
+					tmp_arr.addItem(s);
+				}
+				return tmp_arr;
+			}
+			
+			protected function on_timer_handler(e:TimerEvent):void
+			{
+				dispatchEvent(new HermesEvent(HermesEvent.HERMES_REQUESTS_YOUR_ATTENTION,"refresh_page"));
+			}
+			
+			protected function dataGrid_changeHandler(event:IndexChangeEvent):void
+			{
+				//	Clear out the lists to allow for complete freshness on jobgrid
+				reset_grids();
+				divide_ze_goodies();
+				update_tripple_list();
+				btn_showall.mouseEnabled = true;
+				TweenMax.to(btn_showall,.4,{alpha:.5});
+				btn_showall.enabled = true;
+			}
+			
+			protected function update_tripple_list():void
+			{
+				userGrid.dataProvider 		= null;
+				accountGrid.dataProvider 	= null;
+				groupGrid.dataProvider		= null;
+				
+				user_col 				= new ArrayCollection();
+				account_col 			= new ArrayCollection();
+				group_col				= new ArrayCollection();
+				
+				var sel_part_arr:Array = [];
+				
+				if(dataGrid.selectedIndex != -1) {
+					for each(var obj:Object in dataGrid.selectedItems) {
+						sel_part_arr.push(obj.PartitionName);
+					}
+				}
+				
+				var inner:Job;
+				
+				if(sel_part_arr.length != 0) {
+					for each(inner in jobs_col) {
+						for each(var str_sort:String in sel_part_arr) {
+							if(inner.Partition == str_sort) {
+								user_col.addItem(inner.UserId);
+								account_col.addItem(inner.Account);
+								group_col.addItem(inner.GroupId);
+								break;
+							}	
+						}
+					}
+				} else {
+					for each(inner in (job_grid.dataProvider as ArrayCollection)) {
+						user_col.addItem(inner.UserId);
+						account_col.addItem(inner.Account);
+						group_col.addItem(inner.GroupId);
+					}	
+				}
+				userGrid.dataProvider = removeDuplicates(user_col);
+				accountGrid.dataProvider = removeDuplicates(account_col);
+				groupGrid.dataProvider	= removeDuplicates(group_col);
+				
+				sum_arr = new ArrayCollection();
+				sum_arr_2 = new ArrayCollection();
+				
+				var d:Dictionary = new Dictionary();
+				
+				for each(var s:String in userGrid.dataProvider as ArrayCollection) {
+					d[s] = new jobs_page_summary_object(s);
+				}
+				
+				for each(inner in job_grid.dataProvider as ArrayCollection) {
+					switch(inner.JobState) {
+						case "RUNNING":
+							(d[inner.UserId] as jobs_page_summary_object).update_values(1,0,inner.NumCpus,inner.NumNodes);
+							break;
+						default:
+							break;
+					}
+				}
+				var key:Object;
+				for(key in d) {
+					sum_arr.addItem(d[key]);
+					sum_arr_2.addItem(d[key]);
+				}
+			}
+			
+			protected function button_clickHandler(event:MouseEvent):void
+			{
+				switch((event.currentTarget as Button).id) {
+					case "btn_showall":
+						dataGrid.selectedIndex = -1;
+						dataGrid.selectedItems = null;
+						TweenMax.to(btn_showall,.4,{alpha:.25});
+						btn_showall.mouseEnabled = false;
+						btn_showall.enabled = false;
+						divide_ze_goodies();
+						update_tripple_list();
+						break;
+					case "btn_showall2":
+						userGrid.selectedIndex = -1;
+						userGrid.selectedItems = null;
+						TweenMax.to(btn_showall2,.4,{alpha:.25});
+						btn_showall2.mouseEnabled = false;
+						btn_showall2.enabled = false;
+						divide_ze_goodies();
+						break;
+					case "btn_showall3":
+						accountGrid.selectedIndex = -1;
+						accountGrid.selectedItems = null;
+						TweenMax.to(btn_showall3,.4,{alpha:.25});
+						btn_showall3.mouseEnabled = false;
+						btn_showall3.enabled = false;
+						divide_ze_goodies();
+						break;
+					case "btn_showall4":
+						groupGrid.selectedIndex = -1;
+						groupGrid.selectedItems = null;
+						TweenMax.to(btn_showall4,.4,{alpha:.25});
+						btn_showall4.mouseEnabled = false;
+						btn_showall4.enabled = false;
+						divide_ze_goodies();
+						break;
+				}
+			}
+
+			protected function group1_creationCompleteHandler(event:FlexEvent):void
+			{
+				//	calculate columns for checkbox panel
+				var c:AdvancedDataGridColumn;
+				for each(c in job_grid.columns) {
+					columns_col.addItem({label:c.headerText,visibility:c.visible});
+				}
+				
+				//	Add context menu shizzle
+				var mnu_columns:ContextMenuItem = new ContextMenuItem("Change column visibility");
+				mnu_columns.addEventListener(ContextMenuEvent.MENU_ITEM_SELECT,init_visibility_window);
+				
+				var customContMenu:ContextMenu	= new ContextMenu();
+				customContMenu.hideBuiltInItems();
+				customContMenu.customItems.push(mnu_columns);
+				
+				job_grid.contextMenu = customContMenu;
+				
+				//	Dispatch event that i'm ready to receive ma shit 
+				dispatchEvent(new HermesEvent(HermesEvent.HERMES_REPORTS_FOR_DUTY,"report"));
+			}
+			
+			public function init_visibility_window(event:ContextMenuEvent):void
+			{
+				win = new visible_column_window();
+				win.addEventListener(HermesEvent_Adv.HERMES_REQUESTS_YOUR_ATTENTION,external_window_call);
+				win.open(true);
+				win.column_col = columns_col;
+			}
+			
+			private function external_window_call(e:HermesEvent_Adv):void
+			{
+				if(e.str_my_name == "update_columns") {
+					for each(var c:AdvancedDataGridColumn in job_grid.columns) {
+						for each(var o:Object in e.params[0]) {
+							if(o.label == c.headerText) {
+								c.visible = o.visibility;
+								break;
+							}
+						}	
+					}
+					win.removeEventListener(HermesEvent_Adv.HERMES_REQUESTS_YOUR_ATTENTION,external_window_call);
+					win.invalidateDisplayList();
+					win.invalidateSize();
+					win.close();
+				}
+			}
+			
+			protected function date_format(item:Object, column:AdvancedDataGridColumn):String
+			{
+				if(item == null || !(item is Job)) {
+					return "";
+				}
+				var d:Date = null;
+				switch(column.headerText) {
+					case "Submitted at":
+						if(item.SubmitTime != null) {
+							d = item.SubmitTime as Date;
+						}
+						break;
+					case "Started at":
+						if(item.StartTime != null) {
+							if((item.StartTime as Date).time  == 0) {
+								return "Start Date N/A";
+							} else {
+								d = item.StartTime as Date;
+							}
+						}
+						break;
+					case "Will end at":
+						if(item.EndTime != null) {
+							d = item.EndTime as Date;
+						}
+						break;
+					case "Eligible Time":
+						if(item.EligibleTime != null) {
+							d = item.EligibleTime as Date;
+						}
+						break;
+				}
+				if(d!=null) {
+					return d.date + " " + f.convertNrToMonth(d.month+1) + " " + d.fullYear + " " + d.hours + ":" + d.minutes + ":" + d.seconds;
+				} else {
+					return "";
+				}
+			}
+
+			protected function accountGrid_changeHandler(event:IndexChangeEvent):void
+			{
+				divide_ze_goodies();
+				btn_showall3.mouseEnabled = true;
+				TweenMax.to(btn_showall3,.4,{alpha:.75});
+				btn_showall3.enabled = true;
+			}
+
+
+			protected function userGrid_changeHandler(event:IndexChangeEvent):void
+			{
+				divide_ze_goodies();
+				btn_showall2.mouseEnabled = true;
+				TweenMax.to(btn_showall2,.4,{alpha:.75});
+				btn_showall2.enabled = true;
+			}
+
+
+			protected function groupGrid_changeHandler(event:IndexChangeEvent):void
+			{
+				divide_ze_goodies();
+				btn_showall4.mouseEnabled = true;
+				TweenMax.to(btn_showall4,.4,{alpha:.75});
+				btn_showall4.enabled = true;
+			}
+
+			protected function tn_changeHandler(event:IndexChangedEvent):void
+			{
+				current_selected_navigator = ((tn.selectedChild as NavigatorContent).id);
+			}
+
+			protected function job_grid_itemDoubleClickHandler(event:ListEvent):void
+			{
+				if(job_grid.selectedIndex!=-1) {
+					if(win_detail != null) {
+						if(win_detail.closed) {
+							win_detail.invalidateDisplayList();
+							win_detail.invalidateSize();
+							win_detail.close();
+							win_detail = null;
+						}
+					}
+					win_detail = new job_detail_window();
+					win_detail.open(true);
+					win_detail.shown_job = (job_grid.dataProvider as ArrayCollection).getItemAt(job_grid.selectedIndex) as Job;
+				}
+			}
+
+
+			protected function job_grid_changeHandler(event:ListEvent):void
+			{
+				if(win_detail!=null) {
+					win_detail.shown_job = (job_grid.dataProvider as ArrayCollection).getItemAt(job_grid.selectedIndex) as Job;
+				}
+			}
+
+			protected function dropdownlist1_changeHandler(event:IndexChangeEvent):void
+			{
+				
+			}
+			
+			private function tween_me_props(c:ColumnChart,me:Boolean,mc:Boolean,opac:Number):void
+			{
+				c.mouseEnabled = me;
+				c.mouseChildren = mc;
+				TweenMax.to(c,1,{alpha:opac});
+			}
+			
+			private var sel_index_ddl:String = "Cpu usage";
+			protected function visible_chart_changeHandler(event:IndexChangeEvent):void
+			{
+				switch(sel_index_ddl) {
+					case "Cpu usage":
+						tween_me_props(cpu_usg_chart,false,false,0);
+						break;
+					case "Jobs Running":
+						tween_me_props(jobs_running_chart,false,false,0);
+						break;
+					case "Nodes Running":
+						tween_me_props(nodes_running_chart,false,false,0);
+						break;
+				}
+				switch(visible_chart.selectedItem as String) {
+					case "Cpu usage":
+						sel_index_ddl = "Cpu usage";
+						tween_me_props(cpu_usg_chart,true,true,1);
+						break;
+					case "Jobs Running":
+						sel_index_ddl = "Jobs Running";
+						tween_me_props(jobs_running_chart,true,true,1);
+						break;
+					case "Nodes Running":
+						sel_index_ddl = "Nodes Running";
+						tween_me_props(nodes_running_chart,true,true,1);
+						break;
+				}
+			}
+
+		]]>
+	</fx:Script>
+	<s:Group top="0" left="0" right="0" bottom="0">
+		<s:VGroup id="left_column" top="10" left="10" width="130">
+			<components:ctld_info width="100%" id="ctld_info" />
+			<s:Panel id="partitions_panel" controlBarVisible="true" title="Partitions" width="100%">
+				<s:controlBarContent>
+					<s:Button mouseEnabled="false" alpha=".25" id='btn_showall' click="button_clickHandler(event)" top="2" left="5" right="5" bottom="2" label="Show all" />
+				</s:controlBarContent>
+				<s:List id="dataGrid" dataProvider="{arr_part}" rollOverColor="#eeeeee" selectionColor="#ffeeeeee" alternatingItemColors="[#dddddd,#dddddd]"
+						allowMultipleSelection="true" change="dataGrid_changeHandler(event)" itemRenderer="be.dragdesign.tchpc.renderers.partition_listItem"  top="0" bottom="0" width="100%" borderVisible="false"/>
+			</s:Panel>
+		</s:VGroup>
+		<s:VGroup right="10" top="10" bottom="10" left="{20 + partitions_panel.width}">
+			<s:HGroup id="data_job_group" top="0" width="100%" right="10">
+				<s:Group width="200" top="0" left="0" bottom="0">
+					<s:Group id="grp_inner_tabs" width="100%" top="0" left="0">
+						<mx:TabNavigator change="tn_changeHandler(event)" tabStyleName="tab" paddingTop="0" horizontalGap="2" tabHeight="32" tabWidth="65" width="100%" height="100%" id="tn" creationPolicy="all">
+							<s:NavigatorContent id="user_nav" label="Users" width="100%" height="100%">
+								<components:content_bar_stump bottom="0" left="0" right="0" />
+								<s:Button bottom="2" left="5" right="5" height="23" label="Show all" click="button_clickHandler(event)" id="btn_showall2" alpha=".25" mouseEnabled="false" />
+								<s:List horizontalScrollPolicy="auto" id="userGrid" dataProvider="{user_col}" rollOverColor="#ffffff" selectionColor="#8cc6d6" alternatingItemColors="[#d4d4d4,#dddddd]"
+										allowMultipleSelection="true" itemRenderer="be.dragdesign.tchpc.renderers.user_listItem" change="userGrid_changeHandler(event)" top="0" bottom="27" width="100%" borderVisible="false" />
+								
+							</s:NavigatorContent>
+							<s:NavigatorContent id="account_nav" label="Account" width="100%" height="100%">
+								<components:content_bar_stump bottom="0" left="0" right="0" />
+								<s:Button bottom="2" left="5" right="5" height="23" label="Show all" click="button_clickHandler(event)" id="btn_showall3" alpha=".25" mouseEnabled="false" />
+								<s:List horizontalScrollPolicy="auto" id="accountGrid" dataProvider="{account_col}" rollOverColor="#ffffff" selectionColor="#8cc6d6" alternatingItemColors="[#d4d4d4,#dddddd]"
+										allowMultipleSelection="true" itemRenderer="be.dragdesign.tchpc.renderers.account_listItem" change="accountGrid_changeHandler(event)" top="0" bottom="27" width="100%" borderVisible="false" />
+							</s:NavigatorContent>
+							<s:NavigatorContent id="groups_nav" label="Groups" width="100%" height="100%">
+								<components:content_bar_stump bottom="0" left="0" right="0" />
+								<s:Button bottom="2" left="5" right="5" height="23" label="Show all" click="button_clickHandler(event)" id="btn_showall4" alpha=".25" mouseEnabled="false" />
+								<s:List horizontalScrollPolicy="auto" id="groupGrid" dataProvider="{group_col}" rollOverColor="#ffffff" selectionColor="#8cc6d6" alternatingItemColors="[#d4d4d4,#dddddd]"
+										allowMultipleSelection="true" itemRenderer="be.dragdesign.tchpc.renderers.group_listItem" change="groupGrid_changeHandler(event)"  top="0" bottom="27" width="100%" borderVisible="false" />
+							</s:NavigatorContent>
+						</mx:TabNavigator>
+					</s:Group>
+				</s:Group>
+				<s:Spacer width="5" />
+				<s:Panel styleName="full_height_panel_collapsable" id="snapshot_panel" title="Jobs" top="0" width="100%" right="10">
+					<mx:AdvancedDataGrid change="job_grid_changeHandler(event)" doubleClickEnabled="true" itemDoubleClick="job_grid_itemDoubleClickHandler(event)" horizontalGridLines="true" horizontalGridLineColor="#e6e6e6" verticalGridLineColor="#e6e6e6" alternatingItemColors="[#dddddd,#dddddd]" id="job_grid" 
+										 verticalScrollPolicy="auto" 
+										 horizontalScrollPolicy="on" selectable="true"
+										 height="{this.parentApplication.stage.height}" 
+										 width="100%" dataProvider="{jobs_col}" borderVisible="false" chromeColor="#A6A0A0" contentBackgroundAlpha="0.0" showEffect="">
+						<mx:columns>
+							<mx:AdvancedDataGridColumn headerRenderer="be.dragdesign.tchpc.renderers.HeaderRenderer_Styled" dataField="Partition" editable="false" headerText="Partition" visible="true" />
+							<mx:AdvancedDataGridColumn headerRenderer="be.dragdesign.tchpc.renderers.HeaderRenderer_Styled" dataField="Account" editable="false" headerText="Account" visible="true" />
+							<mx:AdvancedDataGridColumn headerRenderer="be.dragdesign.tchpc.renderers.HeaderRenderer_Styled" dataField="UserId" editable="false" headerText="UserID" visible="true" />
+							<mx:AdvancedDataGridColumn headerRenderer="be.dragdesign.tchpc.renderers.HeaderRenderer_Styled" dataField="JobId" editable="false" width="50" minWidth="50" headerText="Id" visible="true" />
+							<mx:AdvancedDataGridColumn headerRenderer="be.dragdesign.tchpc.renderers.HeaderRenderer_Styled" dataField="Name" editable="false" headerText="Name" visible="true" />
+							<mx:AdvancedDataGridColumn headerRenderer="be.dragdesign.tchpc.renderers.HeaderRenderer_Styled" width="60" minWidth="60" editable="false" dataField="GroupId" headerText="Group" visible="true" />
+							<mx:AdvancedDataGridColumn headerRenderer="be.dragdesign.tchpc.renderers.HeaderRenderer_Styled" width="80" minWidth="80" editable="false" dataField="Priority" headerText="Priority" visible="true" />
+							<mx:AdvancedDataGridColumn headerRenderer="be.dragdesign.tchpc.renderers.HeaderRenderer_Styled" width="80" minWidth="80" editable="false" dataField="JobState" headerText="State" visible="true" itemRenderer="be.dragdesign.tchpc.renderers.JobstateItemRenderer" />
+							<mx:AdvancedDataGridColumn headerRenderer="be.dragdesign.tchpc.renderers.HeaderRenderer_Styled" width="50" minWidth="50" editable="false" dataField="NumCpus" headerText="cpus" visible="true" />
+							<mx:AdvancedDataGridColumn headerRenderer="be.dragdesign.tchpc.renderers.HeaderRenderer_Styled" width="60" minWidth="60" editable="false" dataField="NumNodes" headerText="nodes" visible="true" />
+							<mx:AdvancedDataGridColumn headerRenderer="be.dragdesign.tchpc.renderers.HeaderRenderer_Styled" dataField="SubmitTime" editable="false" headerText="Submitted at" visible="true" labelFunction="date_format" />
+							<mx:AdvancedDataGridColumn headerRenderer="be.dragdesign.tchpc.renderers.HeaderRenderer_Styled" dataField="StartTime" editable="false" headerText="Started at" visible="true" labelFunction="date_format" />
+							<mx:AdvancedDataGridColumn headerRenderer="be.dragdesign.tchpc.renderers.HeaderRenderer_Styled" dataField="EndTime" editable="false" headerText="Will end at" visible="false" labelFunction="date_format" />
+							<mx:AdvancedDataGridColumn headerRenderer="be.dragdesign.tchpc.renderers.HeaderRenderer_Styled" dataField="NodeList" editable="true" headerText="Nodelist" visible="true" />
+							<mx:AdvancedDataGridColumn headerRenderer="be.dragdesign.tchpc.renderers.HeaderRenderer_Styled" dataField="Licenses" editable="false" headerText="Licenses" visible="false" />
+							<mx:AdvancedDataGridColumn headerRenderer="be.dragdesign.tchpc.renderers.HeaderRenderer_Styled" dataField="Reason" editable="false" headerText="Reason" visible="true" />
+							<mx:AdvancedDataGridColumn headerRenderer="be.dragdesign.tchpc.renderers.HeaderRenderer_Styled" dataField="QOS" editable="false" headerText="QOS" visible="false" />
+							<mx:AdvancedDataGridColumn headerRenderer="be.dragdesign.tchpc.renderers.HeaderRenderer_Styled" dataField="dependency" editable="false" headerText="dependency" visible="false" />
+							<mx:AdvancedDataGridColumn headerRenderer="be.dragdesign.tchpc.renderers.HeaderRenderer_Styled" dataField="Requeue" editable="false" headerText="Requeue" visible="false" />
+							<mx:AdvancedDataGridColumn headerRenderer="be.dragdesign.tchpc.renderers.HeaderRenderer_Styled" dataField="RunTime" editable="false" headerText="RunTime" visible="false" />
+							<mx:AdvancedDataGridColumn headerRenderer="be.dragdesign.tchpc.renderers.HeaderRenderer_Styled" dataField="TimeLimit" editable="false" headerText="TimeLimit" visible="false" />
+							<mx:AdvancedDataGridColumn headerRenderer="be.dragdesign.tchpc.renderers.HeaderRenderer_Styled" dataField="TimeMin" editable="false" headerText="Minimal Time" visible="false" />
+							<mx:AdvancedDataGridColumn headerRenderer="be.dragdesign.tchpc.renderers.HeaderRenderer_Styled" dataField="EligibleTime" editable="false" headerText="Eligible Time" visible="false" labelFunction="date_format" />
+							<mx:AdvancedDataGridColumn headerRenderer="be.dragdesign.tchpc.renderers.HeaderRenderer_Styled" dataField="ReqNodeList" editable="false" headerText="Requested Nodes" visible="false" />
+							<mx:AdvancedDataGridColumn headerRenderer="be.dragdesign.tchpc.renderers.HeaderRenderer_Styled" dataField="ExcNodeList" editable="false" headerText="ExcNodeList" visible="false" />
+							<mx:AdvancedDataGridColumn headerRenderer="be.dragdesign.tchpc.renderers.HeaderRenderer_Styled" dataField="Cpus_Task" editable="false" headerText="#cpus/task" visible="false" />
+							<mx:AdvancedDataGridColumn headerRenderer="be.dragdesign.tchpc.renderers.HeaderRenderer_Styled" dataField="ReqS_C_T" editable="false" headerText="ReqS:C:T" visible="false" />
+							<mx:AdvancedDataGridColumn headerRenderer="be.dragdesign.tchpc.renderers.HeaderRenderer_Styled" dataField="MinCPUsNode" editable="false" headerText="MinCPUsNode" visible="false" />
+							<mx:AdvancedDataGridColumn headerRenderer="be.dragdesign.tchpc.renderers.HeaderRenderer_Styled" dataField="MinMemoryNode" editable="false" headerText="MinMemoryNode" visible="false" />
+							<mx:AdvancedDataGridColumn headerRenderer="be.dragdesign.tchpc.renderers.HeaderRenderer_Styled" dataField="MinTmpDisk" editable="false" headerText="MinTmpDisk" visible="false" />
+							<mx:AdvancedDataGridColumn headerRenderer="be.dragdesign.tchpc.renderers.HeaderRenderer_Styled" dataField="Features" editable="false" headerText="Features" visible="false" />
+							<mx:AdvancedDataGridColumn headerRenderer="be.dragdesign.tchpc.renderers.HeaderRenderer_Styled" dataField="Reservation" editable="false" headerText="Reservation" visible="false" />
+							<mx:AdvancedDataGridColumn headerRenderer="be.dragdesign.tchpc.renderers.HeaderRenderer_Styled" dataField="Shared" editable="false" headerText="Shared" visible="false" />
+							<mx:AdvancedDataGridColumn headerRenderer="be.dragdesign.tchpc.renderers.HeaderRenderer_Styled" dataField="Contiguous" editable="false" headerText="Contiguous" visible="false" />
+							<mx:AdvancedDataGridColumn headerRenderer="be.dragdesign.tchpc.renderers.HeaderRenderer_Styled" dataField="Network" editable="false" headerText="Network" visible="false" />
+							<mx:AdvancedDataGridColumn headerRenderer="be.dragdesign.tchpc.renderers.HeaderRenderer_Styled" dataField="Command" editable="false" headerText="Command" visible="false" />
+							<mx:AdvancedDataGridColumn headerRenderer="be.dragdesign.tchpc.renderers.HeaderRenderer_Styled" dataField="WorkDir" editable="false" headerText="WorkDir" visible="false" />
+						</mx:columns>
+					</mx:AdvancedDataGrid>
+				</s:Panel>
+			</s:HGroup>
+			<s:Spacer height="35" />
+			<s:HGroup height="200" width="100%" right="10">
+				<s:Panel id="pnl_options" width="500" title="Detailed Summary Views">					
+					<s:DataGrid width="100%" height="200" dataProvider="{sum_arr}" skinClass="be.dragdesign.tchpc.skins.DatagridSkin" borderVisible="false">
+						<s:columns>
+							<s:ArrayList>
+								<s:GridColumn dataField="str" headerText="Key"/>
+								<s:GridColumn dataField="amt_jobs_running" headerText="#Jobs Running" />
+								<s:GridColumn dataField="amt_cpus_running" headerText="#CPUs In Use" />
+								<s:GridColumn dataField="amt_nodes_running" headerText="#Nodes In Use" />
+							</s:ArrayList>
+						</s:columns>
+					</s:DataGrid>
+				</s:Panel>
+				<s:Spacer width="10" />
+				<s:Panel id="pnl_charts" width="100%" title="Visual overview">
+					<s:Group height="200" left="0" right="0">
+						<s:Group top="-30" right="0" height="30">
+							<s:Label text="Select type " height="30" verticalAlign="middle" width="100" right="120" />
+							<s:DropDownList height="20" right="10" width="140" top="3" id="visible_chart" selectedIndex="0" change="visible_chart_changeHandler(event)">
+								<s:ArrayCollection>
+									<fx:String>Cpu usage</fx:String>
+									<fx:String>Jobs Running</fx:String>
+									<fx:String>Nodes Running</fx:String>
+								</s:ArrayCollection>
+							</s:DropDownList>
+						</s:Group>
+						<mx:ColumnChart showDataTips="true" height="200" width="100%" dataProvider="{sum_arr_2}" id="cpu_usg_chart" alpha="1" mouseEnabled="true" mouseChildren="true">
+							<mx:horizontalAxis>
+								<mx:CategoryAxis categoryField="str" displayName="Key" id="partition_axe_1" ticksBetweenLabels="false" title="Jobs" />
+							</mx:horizontalAxis>
+							<mx:series>
+								<mx:ColumnSeries showDataEffect="{interpolateIn}" xField="str" yField="amt_cpus_running" displayName="Cpus Running">
+									<mx:fill>
+										<s:LinearGradient rotation="90">
+											<s:GradientEntry color="#444444" alpha=".5" />
+											<s:GradientEntry color="#222222" alpha=".5" />
+										</s:LinearGradient>
+									</mx:fill>
+								</mx:ColumnSeries>
+							</mx:series>
+						</mx:ColumnChart>
+						<mx:ColumnChart showDataTips="true" width="100%" height="200" dataProvider="{sum_arr_2}" id="jobs_running_chart" alpha="0" mouseEnabled="false" mouseChildren="false">
+							<mx:horizontalAxis>
+								<mx:CategoryAxis categoryField="str" displayName="Key" id="partition_axe_2" ticksBetweenLabels="false" title="Jobs" />
+							</mx:horizontalAxis>
+							<mx:series>
+								<mx:ColumnSeries showDataEffect="{interpolateIn}" xField="str" yField="amt_jobs_running" displayName="Jobs Running">
+									<mx:fill>
+										<s:LinearGradient rotation="90">
+											<s:GradientEntry color="#444444" alpha=".5" />
+											<s:GradientEntry color="#222222" alpha=".5" />
+										</s:LinearGradient>
+									</mx:fill>
+								</mx:ColumnSeries>
+							</mx:series>
+						</mx:ColumnChart>
+						<mx:ColumnChart showDataTips="true" width="100%" height="200" dataProvider="{sum_arr_2}" id="nodes_running_chart" alpha="0" mouseEnabled="false" mouseChildren="false">
+							<mx:horizontalAxis>
+								<mx:CategoryAxis categoryField="str" displayName="Key" id="partition_axe_3" ticksBetweenLabels="false" title="Jobs" />
+							</mx:horizontalAxis>
+							<mx:series>
+								<mx:ColumnSeries showDataEffect="{interpolateIn}" xField="str" yField="amt_nodes_running" displayName="Nodes Running">
+									<mx:fill>
+										<s:LinearGradient rotation="90">
+											<s:GradientEntry color="#444444" alpha=".5" />
+											<s:GradientEntry color="#222222" alpha=".5" />
+										</s:LinearGradient>
+									</mx:fill>
+								</mx:ColumnSeries>
+							</mx:series>
+						</mx:ColumnChart>
+					</s:Group>
+				</s:Panel>
+			</s:HGroup>
+		</s:VGroup>
+	</s:Group>
+</s:Group>

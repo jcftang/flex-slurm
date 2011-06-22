@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<settings>
+	<communication>
+		<url_gateway><![CDATA[~vermeulp/amfphp/gateway.php]]></url_gateway>
+		<url_slurm_functions><![CDATA[slurm.main]]></url_slurm_functions>
+		<clusters>
+			<cluster>
+				<name><![CDATA[lonsdale]]></name>
+				<url><![CDATA[http://lonsdale.tchpc.tcd.ie/]]></url>
+			</cluster>
+			<cluster>
+				<name><![CDATA[parsons]]></name>
+				<url><![CDATA[http://parsons.tchpc.tcd.ie/]]></url>
+			</cluster>
+		</clusters>
+	</communication>
+	<refreshtimes>
+		<dashboard_refreshtime><![CDATA[30000]]></dashboard_refreshtime>
+	</refreshtimes>
+</settings>

@@ -1,0 +1,241 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:Window xmlns:fx="http://ns.adobe.com/mxml/2009" 
+		  xmlns:s="library://ns.adobe.com/flex/spark" 
+		  xmlns:mx="library://ns.adobe.com/flex/mx" title="Job Detail" minimizable="false" maximizable="false"
+		  width="430" height="600" showStatusBar="false" backgroundColor="#dddddd" xmlns:components="be.dragdesign.tchpc.components.*">
+	<fx:Declarations>
+		<!-- Place non-visual elements (e.g., services, value objects) here -->
+	</fx:Declarations>
+	
+	<fx:Script>
+		<![CDATA[
+			import be.dragdesign.tchpc.objects.Job;
+			import be.dragdesign.tchpc.objects.Node;
+			
+			import dragdesign.Functions;
+			
+			import mx.collections.ArrayCollection;
+			import mx.core.RuntimeDPIProvider;
+			import mx.events.FlexEvent;
+			
+			[Bindable]
+			public var shown_job:Job;
+			
+			public var f:Functions = new Functions();
+			
+			
+			public function convert_to_arrcol(arr:Array):ArrayCollection
+			{
+				var tmp:ArrayCollection = new ArrayCollection();
+				for each(var str:String in arr) {
+					tmp.addItem({label:str,data:str});
+				}
+				return tmp;
+			}
+			
+			public function convert_int_to_bool(i:String):Boolean
+			{
+				if(i!="0") {
+					return true;
+				}
+				return false;
+			}
+			
+			public function convert_to_time(d:Date):String
+			{
+				if(d == null || !(d is Date)) {
+					return "";
+				}
+				return d.date + " " + f.convertNrToMonth(d.month+1) + " " + d.fullYear + " " + d.hours + ":" + d.minutes + ":" + d.seconds;
+			}
+		]]>
+	</fx:Script>
+	<s:VGroup top="0" left="0" bottom="0" paddingLeft="5" paddingRight="5" paddingBottom="5" paddingTop="5" right="30" id="myGroup" clipAndEnableScrolling="true">
+		<s:HGroup left="0" right="0">
+			<s:Label width="100" text="JobId" />
+			<s:Spacer width="10" />
+			<s:TextInput selectable="true" editable="false" text="{shown_job.JobId}" width="270" />
+		</s:HGroup>
+		<s:HGroup left="0" right="0">
+			<s:Label width="100" text="Name" />
+			<s:Spacer width="10" />
+			<s:TextInput selectable="true" editable="false" text="{shown_job.Name}" width="270" />
+		</s:HGroup>
+		<s:HGroup left="0" right="0">
+			<s:Label width="100" text="UserId" />
+			<s:Spacer width="10" />
+			<s:TextInput selectable="true" editable="false" text="{shown_job.UserId}" width="270" />
+		</s:HGroup>
+		<s:HGroup left="0" right="0">
+			<s:Label width="100" text="GroupId" />
+			<s:Spacer width="10" />
+			<s:TextInput selectable="true" editable="false" text="{shown_job.GroupId}" width="270" />
+		</s:HGroup>
+		<s:HGroup left="0" right="0">
+			<s:Label width="100" text="Priority" />
+			<s:Spacer width="10" />
+			<s:TextInput selectable="true" editable="false" text="{shown_job.Priority}" width="270" />
+		</s:HGroup>
+		<s:HGroup left="0" right="0">
+			<s:Label width="100" text="Account" />
+			<s:Spacer width="10" />
+			<s:TextInput selectable="true" editable="false" text="{shown_job.Account}" width="270" />
+		</s:HGroup>
+		<s:HGroup left="0" right="0">
+			<s:Label width="100" text="Nodelist" />
+			<s:Spacer width="10" />
+			<s:TextInput selectable="true" editable="false" text="{shown_job.NodeList}" width="270" />
+		</s:HGroup>
+		<s:HGroup left="0" right="0">
+			<s:Label width="100" text="ReqNodeList" />
+			<s:Spacer width="10" />
+			<s:TextInput selectable="true" editable="false" text="{shown_job.ReqNodeList}" width="270" />
+		</s:HGroup>
+		<s:HGroup left="0" right="0">
+			<s:Label width="100" text="ExcNodeList" />
+			<s:Spacer width="10" />
+			<s:TextInput selectable="true" editable="false" text="{shown_job.ExcNodeList}" width="270" />
+		</s:HGroup>
+		<s:HGroup left="0" right="0">
+			<s:Label width="100" text="Network" />
+			<s:Spacer width="10" />
+			<s:TextInput selectable="true" editable="false" text="{shown_job.Network}" width="270" />
+		</s:HGroup>
+		<s:HGroup left="0" right="0">
+			<s:Label width="100" text="Command" />
+			<s:Spacer width="10" />
+			<s:TextInput selectable="true" editable="false" text="{shown_job.Command}" width="270" />
+		</s:HGroup>
+		<s:HGroup left="0" right="0">
+			<s:Label width="100" text="WorkDir" />
+			<s:Spacer width="10" />
+			<s:TextInput selectable="true" editable="false" text="{shown_job.WorkDir}" width="270" />
+		</s:HGroup>
+		<s:HGroup left="0" right="0">
+			<s:Label width="100" text="Reason" />
+			<s:Spacer width="10" />
+			<s:TextInput selectable="true" editable="false" text="{shown_job.Reason}" width="270" />
+		</s:HGroup>
+		<s:HGroup left="0" right="0">
+			<s:Label width="100" text="QOS" />
+			<s:Spacer width="10" />
+			<s:TextInput selectable="true" editable="false" text="{shown_job.QOS}" width="270" />
+		</s:HGroup>
+		<s:HGroup left="0" right="0">
+			<s:Label width="100" text="JobState" />
+			<s:Spacer width="10" />
+			<components:job_state_obj state="{shown_job.JobState}" width="270" height="20" />
+		</s:HGroup>
+		<s:HGroup left="0" right="0">
+			<s:Label width="100" text="dependency" />
+			<s:Spacer width="10" />
+			<s:TextInput selectable="true" editable="false" text="{shown_job.dependency}" width="270" />
+		</s:HGroup>
+		<s:HGroup left="0" right="0">
+			<s:Label width="100" text="Requeue" />
+			<s:Spacer width="10" />
+			<s:CheckBox selected="{convert_int_to_bool(shown_job.Requeue)}" enabled="false" width="270" />
+		</s:HGroup>
+		<s:HGroup left="0" right="0">
+			<s:Label width="100" text="RunTime" />
+			<s:Spacer width="10" />
+			<s:TextInput selectable="true" editable="false" text="{shown_job.RunTime}" width="270" />
+		</s:HGroup>
+		<s:HGroup left="0" right="0">
+			<s:Label width="100" text="TimeLimit" />
+			<s:Spacer width="10" />
+			<s:TextInput selectable="true" editable="false" text="{shown_job.TimeLimit}" width="270" />
+		</s:HGroup>
+		<s:HGroup left="0" right="0">
+			<s:Label width="100" text="TimeMin" />
+			<s:Spacer width="10" />
+			<s:TextInput selectable="true" editable="false" text="{shown_job.TimeMin}" width="270" />
+		</s:HGroup>
+		<s:HGroup left="0" right="0">
+			<s:Label width="100" text="SubmitTime" />
+			<s:Spacer width="10" />
+			<s:TextInput text="{convert_to_time(shown_job.SubmitTime)}" editable="false" width="270" />
+		</s:HGroup>
+		<s:HGroup left="0" right="0">
+			<s:Label width="100" text="EligibleTime" />
+			<s:Spacer width="10" />
+			<s:TextInput text="{convert_to_time(shown_job.EligibleTime)}" editable="false" width="270" />
+		</s:HGroup>
+		<s:HGroup left="0" right="0">
+			<s:Label width="100" text="StartTime" />
+			<s:Spacer width="10" />
+			<s:TextInput text="{convert_to_time(shown_job.StartTime)}" editable="false" width="270" />
+		</s:HGroup>
+		<s:HGroup left="0" right="0">
+			<s:Label width="100" text="EndTime" />
+			<s:Spacer width="10" />
+			<s:TextInput text="{convert_to_time(shown_job.EndTime)}" editable="false" width="270" />
+		</s:HGroup>
+		<s:HGroup left="0" right="0">
+			<s:Label width="100" text="Partition" />
+			<s:Spacer width="10" />
+			<s:TextInput selectable="true" editable="false" text="{shown_job.Partition}" width="270" />
+		</s:HGroup>
+		<s:HGroup left="0" right="0">
+			<s:Label width="100" text="NumCpus" />
+			<s:Spacer width="10" />
+			<s:TextInput selectable="true" editable="false" text="{shown_job.NumCpus}" width="270" />
+		</s:HGroup>
+		<s:HGroup left="0" right="0">
+			<s:Label width="100" text="NumNodes" />
+			<s:Spacer width="10" />
+			<s:TextInput selectable="true" editable="false" text="{shown_job.NumNodes}" width="270" />
+		</s:HGroup>
+		<s:HGroup left="0" right="0">
+			<s:Label width="100" text="Cpus_Task" />
+			<s:Spacer width="10" />
+			<s:TextInput selectable="true" editable="false" text="{shown_job.Cpus_Task}" width="270" />
+		</s:HGroup>
+		<s:HGroup left="0" right="0">
+			<s:Label width="100" text="Requested S/C/T" />
+			<s:Spacer width="10" />
+			<s:TextInput selectable="true" editable="false" text="{shown_job.ReqS_C_T}" width="270" />
+		</s:HGroup>
+		<s:HGroup left="0" right="0">
+			<s:Label width="100" text="MinCPUsNode" />
+			<s:Spacer width="10" />
+			<s:TextInput selectable="true" editable="false" text="{shown_job.MinCPUsNode}" width="270" />
+		</s:HGroup>
+		<s:HGroup left="0" right="0">
+			<s:Label width="100" text="MinMemoryNode" />
+			<s:Spacer width="10" />
+			<s:TextInput selectable="true" editable="false" text="{shown_job.MinMemoryNode}" width="270" />
+		</s:HGroup>
+		<s:HGroup left="0" right="0">
+			<s:Label width="100" text="MinTmpDisk" />
+			<s:Spacer width="10" />
+			<s:TextInput selectable="true" editable="false" text="{shown_job.MinTmpDisk}" width="270" />
+		</s:HGroup>
+		<s:HGroup left="0" right="0">
+			<s:Label width="100" text="Features" />
+			<s:Spacer width="10" />
+			<s:List dataProvider="{convert_to_arrcol(shown_job.Features)}" width="270" height="60" />
+		</s:HGroup>
+		<s:HGroup left="0" right="0">
+			<s:Label width="100" text="Reservation" />
+			<s:Spacer width="10" />
+			<s:TextInput selectable="true" editable="false" text="{shown_job.Reservation}" width="270" />
+		</s:HGroup>
+		<s:HGroup left="0" right="0">
+			<s:Label width="100" text="Shared" />
+			<s:Spacer width="10" />
+			<s:CheckBox selected="{convert_int_to_bool(shown_job.Shared)}" enabled="false" width="270" />
+		</s:HGroup>
+		<s:HGroup left="0" right="0">
+			<s:Label width="100" text="Contiguous" />
+			<s:Spacer width="10" />
+			<s:CheckBox selected="{convert_int_to_bool(shown_job.Contiguous)}" enabled="false" width="270" />
+		</s:HGroup>
+		<s:HGroup left="0" right="0">
+			<s:Label width="100" text="Licenses" />
+			<s:Spacer width="10" />
+			<s:List dataProvider="{convert_to_arrcol(shown_job.Licenses)}" width="270" height="60" />
+		</s:HGroup>
+	</s:VGroup>
+	<s:VScrollBar viewport="{myGroup}" right="0" top="0" width="15" height="100%" />
+</s:Window>

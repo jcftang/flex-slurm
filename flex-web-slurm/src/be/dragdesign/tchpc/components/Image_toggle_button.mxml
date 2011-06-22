@@ -1,0 +1,105 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:Group xmlns:fx="http://ns.adobe.com/mxml/2009" 
+		 xmlns:s="library://ns.adobe.com/flex/spark" 
+		 xmlns:mx="library://ns.adobe.com/flex/mx" currentState="true_state" mouseEnabled="true" mouseChildren="false" buttonMode="true" click="group1_clickHandler(event)">
+	<s:states>
+		<s:State name="false_state"/>
+		<s:State name="true_state"/>
+	</s:states>
+	<fx:Declarations>
+		<!-- Place non-visual elements (e.g., services, value objects) here -->
+	</fx:Declarations>
+	<fx:Metadata>
+		[Event(name="hermes",type="be.dragdesign.tchpc.events.HermesEvent")]
+	</fx:Metadata>
+	<fx:Script>
+		<![CDATA[
+			
+			import be.dragdesign.tchpc.events.HermesEvent;
+			
+			import com.greensock.*;
+			import com.greensock.easing.*;
+			
+			import mx.events.FlexEvent;
+			
+			//
+			//	Fields
+			//
+			
+			[Bindable]
+			private var _imageSource_false:String;
+			[Bindable]
+			private var _imageSource_true:String;
+			private var _is_enabled:Boolean = true;
+			
+			//
+			//	Getters & Setters
+			//
+				
+			public function get imageSource_false():String
+			{
+				return _imageSource_false;
+			}
+			
+			public function set imageSource_false(value:String):void
+			{
+				_imageSource_false = value;
+			}
+			
+			public function get imageSource_true():String
+			{
+				return _imageSource_true;
+			}
+			
+			public function set imageSource_true(value:String):void
+			{
+				_imageSource_true = value;
+			}
+			
+			public function get is_enabled():Boolean
+			{
+				return _is_enabled;
+			}
+			
+			public function set is_enabled(value:Boolean):void
+			{
+				_is_enabled = value;
+				toggle();
+			}
+			
+			//
+			//	Mouse Events ! 
+			//
+			
+			protected function group1_clickHandler(event:MouseEvent):void
+			{
+				is_enabled = !is_enabled;
+			}
+			
+			protected function toggle():void
+			{
+				if(_is_enabled) {
+					this.currentState = "true_state";
+					dispatchEvent(new HermesEvent(HermesEvent.HERMES_REQUESTS_YOUR_ATTENTION,"true"));
+				} else {
+					this.currentState = "false_state";
+					dispatchEvent(new HermesEvent(HermesEvent.HERMES_REQUESTS_YOUR_ATTENTION,"false"));
+				}
+			}
+
+		]]>
+	</fx:Script>
+	
+	<mx:Image alpha="1" width="100%" height="100%"
+			  id="image_button"
+			  includeIn="true_state"
+			  autoLoad="true"
+			  source="{_imageSource_true}"
+			  smoothBitmapContent="true" />
+	<mx:Image alpha="1" width="100%" height="100%"
+			  id="image_button2"
+			  includeIn="false_state"
+			  source="{_imageSource_false}"
+			  autoLoad="true" 
+			  smoothBitmapContent="true" />
+</s:Group>

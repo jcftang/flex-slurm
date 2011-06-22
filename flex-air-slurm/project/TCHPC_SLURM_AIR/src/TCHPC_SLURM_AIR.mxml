@@ -1,0 +1,539 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:WindowedApplication xmlns:fx="http://ns.adobe.com/mxml/2009" 
+					   xmlns:s="library://ns.adobe.com/flex/spark" 
+					   xmlns:mx="library://ns.adobe.com/flex/mx"
+					   xmlns:comps="be.dragdesign.tchpc.components.*"
+					   xmlns:pages="be.dragdesign.tchpc.pages.*"
+					   creationComplete="on_creation_complete()" xmlns:local="*" xmlns:Pages="be.dragdesign.tchpc.Pages.*">
+	<s:states>
+		<s:State name="dashboard_state" />
+		<s:State name="jobs_state" />
+		<s:State name="nodes_state" />
+		<s:State name="help_state" />
+	</s:states>
+	<fx:Style source="be/dragdesign/tchpc/styles/main.css" />
+	<fx:Metadata>
+		[Event(name="hermes",type="be.dragdesign.tchpc.events.HermesEvent")]
+	</fx:Metadata>
+	<fx:Script>
+		<![CDATA[
+			import be.dragdesign.tchpc.application_objects.Cluster;
+			import be.dragdesign.tchpc.application_objects.Settings;
+			import be.dragdesign.tchpc.application_objects.c_node_summary;
+			import be.dragdesign.tchpc.components.Popup_error;
+			import be.dragdesign.tchpc.events.HermesEvent;
+			import be.dragdesign.tchpc.global_functions.Instances;
+			import be.dragdesign.tchpc.objects.Job;
+			import be.dragdesign.tchpc.objects.Partition;
+			import be.dragdesign.tchpc.objects.partition_job_cpus;
+			import be.dragdesign.tchpc.objects.sinfo_object;
+			
+			import dragdesign.Graphical;
+			import dragdesign.instances.ModularStorage;
+			
+			import mx.collections.ArrayCollection;
+			import mx.collections.IHierarchicalCollectionView;
+			import mx.controls.Alert;
+			import mx.events.CloseEvent;
+			import mx.managers.PopUpManager;
+			import mx.rpc.events.FaultEvent;
+			import mx.rpc.events.ResultEvent;
+			import mx.utils.ArrayUtil;
+			
+			import nl.demonsters.debugger.MonsterDebugger;
+			
+			import spark.events.IndexChangeEvent;
+			import spark.events.ListEvent;
+
+			//
+			//	FIELDS
+			//
+			
+			[Embed(source = "assets/images/gui/Partitions_icon.png")]private var partition_icon:Class;
+			
+			[Bindable]public var selected_partition:String=null;
+			
+			[Bindable]public var clusterz:ArrayCollection=new ArrayCollection();
+			[Bindable]public var current_clusterz_index:uint;
+			
+			[Bindable]public var last_update:Date = new Date();
+			
+			private var current_page:Object;
+			
+			private var first_run:Boolean = true;
+			
+			private var sets:Settings;
+			
+			//
+			//	FUNCTIONS
+			//
+			
+			private function on_creation_complete():void {
+				var d:MonsterDebugger = new MonsterDebugger(this);
+				addEventListener(Event.RESIZE,resizeHandler);
+				settings_service.send();
+			}
+			
+			private function init_variables():void
+			{
+				setup_amfphp_settings();
+				
+				current_page = dashboard_page;
+				
+				//	Add all necessary global variables to storage ( allows them to be accessible anywhere,anytime )
+				
+				ModularStorage.getInstance().addItemToStorage("settings",sets);
+				ModularStorage.getInstance().addItemToStorage("g",new Graphical());
+				
+				//	Fire up the dashboard
+				
+				dashboard_page.init_live_data_stream();
+				
+				slurm_main.get_partition_list.send();
+				
+				ddl_clusterz.selectedIndex = 0;
+				
+				first_run = false;
+			}
+			
+			protected function setup_amfphp_settings():void
+			{
+				slurm_main.endpoint 	= clusterz.getItemAt(this.current_clusterz_index).url + sets.url_gateway;
+				slurm_main.source 		= sets.url_slurm_functions;
+				slurm_main.destination 	= sets.url_slurm_functions;
+			}
+			
+			//
+			//	DATAGRIDFUNCTIONS
+			//
+			
+			private function calc_row_color(item:Object, rowIndex:int, dataIndex:int, color:uint):uint
+			{
+				if(item.value == "" || item.value == null) {
+					return 0xFFB6C1;	
+				} else {
+					return color; 
+				}
+			}
+			
+			//
+			//	RESULTHANLDERS
+			//
+			
+			protected function settings_service_resultHandler(event:ResultEvent):void
+			{
+				var arr_clusters:Array = [];
+				clusterz = new ArrayCollection();
+				current_clusterz_index = 0;
+				try {
+					var i:ArrayCollection = event.result.settings.communication.clusters.cluster;
+					for each(var i_inner:Object in i) {
+						var c:Cluster = new Cluster(i_inner.name, i_inner.url);
+						arr_clusters.push(c);
+						clusterz.addItem(c);
+					}
+				} catch(e:Error) {
+					show_error("No clusters were found in the settings.xml file");
+					return;
+				}
+				
+				if(clusterz.length == 0) {
+					show_error("No clusters were found in the settings.xml file");
+					return;
+				}
+				
+				sets = new Settings(
+					event.result.settings.communication.url_gateway,
+					event.result.settings.communication.url_slurm_functions,
+					event.result.settings.refreshtimes.dashboard_refreshtime);
+				
+				//	Init remoteconnection vars
+				init_variables();
+			}
+			
+			//
+			//	SLURM_MAIN AMFPHP resulthandlers
+			//
+			
+			protected function retrieve_sinfo_rows(event:ResultEvent):void
+			{
+				if(event.target.service.endpoint == slurm_main.endpoint) {
+					if(event.result != null || !(event.result is Number)) {
+						var sinfo_tmp:sinfo_object;
+						dashboard_page.sinfo_col = new ArrayCollection();
+						for each(var inner:Object in event.result) {
+							sinfo_tmp 					= new sinfo_object();
+							sinfo_tmp.nodelist 			= inner.nodelist;
+							sinfo_tmp.nodecount 		= inner.nodes;
+							sinfo_tmp.partition_name 	= inner.partition_name;
+							sinfo_tmp.nodestate 		= c_node_summary.convert_state_to_string(inner.state);
+							sinfo_tmp.cpus 				= inner.cpus;
+							sinfo_tmp.s_c_t 			= inner.s_c_t;
+							sinfo_tmp.memory 			= inner.memory;
+							sinfo_tmp.tmp_disk 			= inner.tmp_disk;
+							sinfo_tmp.weight 			= inner.weight;
+							sinfo_tmp.features 			= inner.features;
+							sinfo_tmp.reason 			= inner.reason;
+							dashboard_page.sinfo_col.addItem(sinfo_tmp);
+						}
+						dashboard_page.divide_the_pie(dashboard_page.sinfo_col);
+						if(!dashboard_page.show_all) {
+							dashboard_page.update_sinfo_table();
+						}
+						last_update = new Date();
+					}
+				}
+			}
+			
+			protected function get_partition_list(event:ResultEvent):void
+			{
+				if(event.target.service.endpoint == slurm_main.endpoint) {
+					if(event.result != null || !(event.result is Number)) {
+						
+						switch(this.currentState) {
+							case "dashboard_state":
+							case "jobs_state":
+							case "nodes_state":
+								current_page.init_live_data_stream();
+								break;
+							default:
+								return;
+						}
+						
+						var i:Instances = Instances.get_instance();
+						var part_tmp:Partition;
+						
+						current_page.arr_part = new ArrayCollection();
+						
+						for each(var inner:Object in event.result) {
+							part_tmp						= new Partition();
+							part_tmp.AllocNodes				= inner.AllocNodes;
+							part_tmp.AllowGroups			= inner.AllowGroups;
+							part_tmp.Default				= i.convert_string_to_boolean(inner.Default);
+							part_tmp.DefaultTime			= inner.DefaultTime;
+							part_tmp.DisableRootJobs		= i.convert_string_to_boolean(inner.DisableRootJobs);
+							part_tmp.Hidden					= i.convert_string_to_boolean(inner.Hidden);
+							part_tmp.MaxNodes				= inner.MaxNodes;
+							part_tmp.MaxTime				= inner.MaxTime;
+							part_tmp.MinNodes				= inner.MinNodes;
+							part_tmp.Nodes					= inner.Nodes;
+							part_tmp.PartitionName			= inner.PartitionName;
+							part_tmp.PreemptMode			= inner.PreemptMode;
+							part_tmp.Priority				= inner.Priority;
+							part_tmp.RootOnly				= i.convert_string_to_boolean(inner.RootOnly);
+							part_tmp.Shared					= i.convert_string_to_boolean(inner.Shared);
+							part_tmp.state					= inner.State;
+							part_tmp.TotalCPUs				= inner.TotalCPUs;
+							part_tmp.TotalNodes				= inner.TotalNodes;
+							current_page.arr_part.addItem(part_tmp);
+						}
+						
+						if(this.currentState == "jobs_state") {
+							current_page.dataGrid.selectedIndex = 0;
+							current_page.dataGrid.selectedItem = jobs_page.dataGrid.dataProvider.getItemAt(0);
+						} else if(this.currentState == "nodes_state") {
+							nodes_page.load_start_partition();
+						}
+						last_update = new Date();
+					}
+				}
+			}
+			
+			protected function get_jobs_filtered_result(event:ResultEvent):void
+			{
+				if(event.target.service.endpoint == slurm_main.endpoint) {
+					if(event.result != null || !(event.result is Number)) {
+						
+						switch(this.currentState) {
+							case "jobs_state":
+								last_update = new Date();
+								current_page.jobs_col = new ArrayCollection();
+								break;
+							default:
+								return;
+						}
+						jobs_page.process_new_list(event);
+					}
+				}
+			}
+			
+			protected function get_slurmctld_status(event:ResultEvent):void
+			{
+				if(event.target.service.endpoint == slurm_main.endpoint) {
+					switch(this.currentState) {
+						case "dashboard_state":
+						case "jobs_state":
+						case "nodes_state":
+							last_update = new Date();
+							current_page.ctld_info.update_slurm_status((event.result as Array)[0],(event.result as Array)[1]);
+							break;
+					}
+				}
+			}
+			
+			protected function get_filtered_node_list_result(event:ResultEvent):void
+			{
+				if(event.target.service.endpoint == slurm_main.endpoint) {
+					if(event.result is Array) {
+						switch(this.currentState) {
+							case "nodes_state":
+								last_update = new Date();
+								current_page.process_my_nodelist(event.result as Array);
+								break;
+							default:
+								break;
+						}
+					}
+				}
+			}
+			
+			protected function get_jobs_result(event:ResultEvent):void
+			{
+				if(event.target.service.endpoint == slurm_main.endpoint) {
+					//	Do stuff here :)
+				}
+			}
+			
+			protected function get_full_job_summary(event:ResultEvent):void
+			{
+				if(event.target.service.endpoint == slurm_main.endpoint) {
+					if(event.result is Array) {
+						last_update = new Date();
+						dashboard_page.process_job_summary(event.result as Array);
+					}
+				}
+			}
+			
+			//
+			//	END SLURM MAIN AMFPHP HANDLERS
+			//
+
+			protected function topbar1_hermesHandler(event:HermesEvent):void
+			{
+				if(!first_run) {
+					
+					current_page.shutdown_page();
+					this.currentState = event.str_my_name;
+					
+					switch(this.currentState) {
+						case "dashboard_state":
+							current_page = dashboard_page;
+							current_page.init_live_data_stream();
+							break;
+						case "jobs_state":
+							current_page = jobs_page;
+							break;
+						case "nodes_state":
+							current_page = nodes_page;
+							break;
+						case "help_state":
+							current_page = help_page;
+							break;
+					}
+					
+					slurm_main.get_partition_list.send();
+				}
+			}
+
+
+			protected function dashboard_page_hermesHandler(event:HermesEvent):void
+			{
+				switch(event.str_my_name) {
+					case "refresh_sinfo":
+						slurm_main.get_sinfo_rows.send();
+						slurm_main.slurmctld_status.send();
+						break;
+					case "refresh_jobs":
+						slurm_main.get_full_job_summary.send();
+				}
+			}
+			
+			protected function jobs_page_hermesHandler(event:HermesEvent):void
+			{
+				switch(event.str_my_name) {
+					case "refresh_page":
+						slurm_main.slurmctld_status.send();
+						slurm_main.get_jobs_filtered.send();
+				}
+			}
+			
+			protected function nodes_hermesHandler(event:HermesEvent):void
+			{
+				if(this.currentState == "nodes_state") {
+					switch(event.str_my_name) {
+						case "refresh_parts":
+							slurm_main.slurmctld_status.send();
+							slurm_main.get_filtered_node_list.send();
+					}
+				}
+			}
+			
+			protected function resizeHandler(e:Event):void
+			{
+				dashboard_page.sinfo_grid.height = this.height - 380;
+				jobs_page.job_grid.height = this.height - 380;
+				jobs_page.data_job_group.height = this.height - 380;
+				jobs_page.grp_inner_tabs.height = this.height - 350;
+				nodes_page.node_grid.height = this.height - 370;
+			}
+
+			private var pop_error:Popup_error;
+			protected function slurm_main_faultHandler(event:FaultEvent):void
+			{
+				show_error();
+			}
+			
+			private function show_error(str:String=null):void
+			{
+				if(pop_error != null) {
+					try {
+						PopUpManager.removePopUp(pop_error);
+						pop_error = null;
+					} catch(e:Error) {
+						
+					}
+				}
+				pop_error = new Popup_error();
+				if(str!=null) {
+					pop_error.error_message = str;
+				}
+				core_shut_down();
+				pop_error.addEventListener(Event.CLOSE,close_popupHandler);
+				PopUpManager.addPopUp(pop_error,this,true);
+				PopUpManager.centerPopUp(pop_error);
+			}
+			private function close_popupHandler(e:Event):void
+			{
+				PopUpManager.removePopUp(pop_error);
+				pop_error = null;
+			}
+			
+			private function core_shut_down():void
+			{
+				dashboard_page.shutdown_page();
+				jobs_page.shutdown_page();
+				nodes_page.shutdown_page();
+				help_page.shutdown_page();
+			}
+
+
+			protected function img_button_hermesHandler(event:HermesEvent):void
+			{
+				if(event.str_my_name == "true") {
+					if(current_page != null) {
+						current_page.boot_me_up();
+					}
+				} else if(event.str_my_name == "false") {
+					if(current_page != null) {
+						core_shut_down();
+					} 
+				}
+			}
+
+
+			protected function ddl_clusterz_changeHandler(event:IndexChangeEvent):void
+			{
+				this.current_clusterz_index = ddl_clusterz.selectedIndex;
+				setup_amfphp_settings();
+				switch(this.currentState) {
+					case "dashboard_state":
+						slurm_main.get_sinfo_rows.send();
+						slurm_main.slurmctld_status.send();
+						slurm_main.get_full_job_summary.send();
+						slurm_main.get_partition_list.send();
+						break;
+					case "jobs_state":
+						slurm_main.slurmctld_status.send();
+						slurm_main.get_jobs_filtered.send();
+						slurm_main.get_partition_list.send();
+						jobs_page.reset_grids(true);
+						break;
+					case "nodes_state":
+						nodes_page.shutdown_page();
+						nodes_page.reset_variables();
+						slurm_main.slurmctld_status.send();
+						slurm_main.get_partition_list.send();
+						break;
+					case "help_state":
+						break;
+				}
+			}
+
+
+
+
+		]]>
+	</fx:Script>
+	<fx:Declarations>
+		<!-- Place non-visual elements here -->
+		<s:HTTPService id="settings_service" url="settings.xml" result="settings_service_resultHandler(event)" />
+		<s:ArrayCollection id="config_arr"  source="{ArrayUtil.toArray(slurm_main.get_configuration.lastResult)}" />
+		<s:RemoteObject showBusyCursor="true" id="slurm_main" fault="slurm_main_faultHandler(event)">
+			<mx:method name="get_slurm_version">
+				<mx:arguments>
+					<option_version>4</option_version>
+				</mx:arguments>
+			</mx:method>
+			<mx:method name="get_sinfo_rows" result="retrieve_sinfo_rows(event)">
+				<mx:arguments>
+					<partition_name>{selected_partition}</partition_name>
+				</mx:arguments>
+			</mx:method>
+			<mx:method name="get_configuration" />
+			<mx:method name="slurmctld_status" result="get_slurmctld_status(event)" />
+			<mx:method name="get_full_job_summary" result="get_full_job_summary(event)" />
+			<mx:method name="get_partition_list" result="get_partition_list(event)" />
+			<mx:method name="get_jobs" result="get_jobs_result(event)">
+				<mx:arguments>
+					<start_id>{jobs_page.startIndex}</start_id>
+					<range_count>{jobs_page.range}</range_count>
+					<partition_filtered>{jobs_page.part_selected}</partition_filtered>
+				</mx:arguments>
+			</mx:method>
+			<mx:method name="get_jobs_filtered" result="get_jobs_filtered_result(event)">
+				<mx:arguments>
+					<start_id>{jobs_page.startIndex}</start_id>
+					<range_count>{jobs_page.range}</range_count>
+					<partition_filtered>{jobs_page.part_selected}</partition_filtered>
+				</mx:arguments>
+			</mx:method>
+			<mx:method name="get_filtered_node_list" result="get_filtered_node_list_result(event)" />
+		</s:RemoteObject>
+	</fx:Declarations>
+	
+	
+	<!--
+		//
+		//	START OF GUI
+		//
+	-->
+	
+	<comps:TopBar hermes="topbar1_hermesHandler(event)" top="0" left="0" right="0" />
+	<s:Group visible="true" top="70" left="0" right="0" bottom="0">
+		<Pages:Dashboard hermes="dashboard_page_hermesHandler(event)" id="dashboard_page" visible="false" visible.dashboard_state="true" top="0" left="0" right="0" bottom="0" />
+		<Pages:Jobs hermes="jobs_page_hermesHandler(event)" hermes_reporting="{resizeHandler(null)}" id="jobs_page" visible="false" visible.jobs_state="true" top="0" left="0" right="0" bottom="0" />
+		<Pages:Nodes hermes="nodes_hermesHandler(event)" id="nodes_page" visible="false" visible.nodes_state="true" top="0" left="0" right="0" bottom="0" />
+		<Pages:Help id="help_page" visible="false" visible.help_state="true" top="0" left="0" right="0" bottom="0" />
+	</s:Group>
+	<s:Group left="10" height="100%" bottom="10" width="130" excludeFrom="help_state">
+		<comps:Image_toggle_button id="img_button" imageSource_true="assets/images/gui/poweron.png" width="60" bottom="30" height="60" left="35" imageSource_false="assets/images/gui/poweroff.png" hermes="img_button_hermesHandler(event)" />
+		<s:Label text="Select Cluster" height="20" width="100%" bottom="120" verticalAlign="middle" textAlign="center" />
+		<s:DropDownList id="ddl_clusterz" dataProvider="{clusterz}" labelField="name" change="ddl_clusterz_changeHandler(event)" left="5" right="5" bottom="100" height="20" />
+		<s:Label text="{last_update.toString()}" height="20" width="100%" bottom="155" verticalAlign="middle" textAlign="center" />
+		<s:Rect bottom="150" left="-5" right="-5" height="50">
+			<s:fill>
+				<s:LinearGradient rotation="90">
+					<s:GradientEntry color="#444444" alpha=".5" />
+					<s:GradientEntry color="#222222" alpha=".5" />
+				</s:LinearGradient>
+			</s:fill>
+		</s:Rect>
+		<s:Label text="Last Update" height="20" width="100%" bottom="180" verticalAlign="middle" textAlign="center" />
+	</s:Group>
+	
+	<!--
+		//
+		//	END OF GUI
+		//
+	-->
+</s:WindowedApplication>

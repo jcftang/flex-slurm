@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:Group xmlns:fx="http://ns.adobe.com/mxml/2009" 
+		 xmlns:s="library://ns.adobe.com/flex/spark" 
+		 xmlns:mx="library://ns.adobe.com/flex/mx" width="170" height="130">
+
+	<fx:Script>
+		<![CDATA[
+			import mx.events.CloseEvent;
+			
+			[Bindable]
+			public var error_message:String = "We couldn't get a lock on the datastream :("; 
+			
+			protected function button1_clickHandler(event:MouseEvent):void
+			{
+				dispatchEvent(new CloseEvent(Event.CLOSE));
+			}
+		]]>
+	</fx:Script>
+
+	<fx:Declarations>
+		<!-- Place non-visual elements (e.g., services, value objects) here -->
+	</fx:Declarations>
+	<s:Panel  width="170" x="0" height="130" y="0" title="Oops ! ">
+		<mx:Image source="assets/images/gui/file-broken.png" top="10" left="10" bottom="40" width="138"/>
+		<s:Label x="53" y="14" text="{error_message}" width="108" verticalAlign="top" textAlign="center"/>
+		<s:Button label="Ok" click="button1_clickHandler(event)" left="40" bottom="10" right="40"/>
+	</s:Panel>
+	
+</s:Group>

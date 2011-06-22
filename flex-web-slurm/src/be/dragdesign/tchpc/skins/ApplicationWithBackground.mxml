@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:Skin name="CustomApplicationSkin"
+		xmlns:fx="http://ns.adobe.com/mxml/2009"
+		xmlns:s="library://ns.adobe.com/flex/spark"
+		xmlns:fb="http://ns.adobe.com/flashbuilder/2009"
+		alpha.disabled="0.5"
+		alpha.disabledWithControlBar="0.5">
+	<!-- states -->
+	<s:states>
+		<s:State name="normal" />
+		<s:State name="disabled" />
+		<s:State name="normalWithControlBar" />
+		<s:State name="disabledWithControlBar" />
+	</s:states>
+	
+	<fx:Metadata>
+		[HostComponent("spark.components.Application")]
+	</fx:Metadata> 
+	
+	<!-- fill -->
+	<!--- 
+	A rectangle with a solid color fill that forms the background of the application.
+	The color of the fill is set to the Application's backgroundColor property.
+	-->
+	
+	<s:Group left="0" right="0" top="0" bottom="0">
+		<s:Group id="topRect" height="768" top="0" left="0" right="0">
+			<s:BitmapImage smooth="true" fillMode="clip" top="0" bottom="0" left="0" source="@Embed('/assets/images/gui/left.png')" />
+			<s:Rect id="backgroundRect" left="172" top="0" bottom="0" width="100%">
+				<s:fill>
+					<s:BitmapFill source="@Embed('/assets/images/gui/middle_repeat.png')" fillMode="repeat" />
+				</s:fill>
+			</s:Rect>
+		</s:Group>
+		<s:Group id="bottomRect" left="0" top="768" right="0" bottom="0">
+			<s:Rect left="0" width="172" bottom="0" top="0">
+				<s:fill>
+					<s:BitmapFill source="@Embed('/assets/images/gui/bottom_left_fixed.png')" fillMode="repeat" />
+				</s:fill>
+			</s:Rect>
+			<s:Rect left="172" right="0" top="0" bottom="0">
+				<s:fill>
+					<s:BitmapFill source="@Embed('/assets/images/gui/bottom_left_repeater.png')" fillMode="repeat" />
+				</s:fill>
+			</s:Rect>
+		</s:Group>
+		<s:Group id="contentGroup" width="100%" height="100%" minWidth="0" minHeight="0" />
+	</s:Group>
+	
+</s:Skin>

@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<settings>
+	<communication>
+		<url_gateway><![CDATA[http://lonsdale.tchpc.tcd.ie/~vermeulp/amfphp/gateway.php]]></url_gateway>
+		<url_slurm_functions><![CDATA[slurm.main]]></url_slurm_functions>
+	</communication>
+</settings>

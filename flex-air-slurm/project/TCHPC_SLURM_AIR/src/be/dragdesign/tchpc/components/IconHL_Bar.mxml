@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:Group xmlns:fx="http://ns.adobe.com/mxml/2009" 
+		 xmlns:s="library://ns.adobe.com/flex/spark" 
+		 xmlns:mx="library://ns.adobe.com/flex/mx" xmlns:components="be.dragdesign.tchpc.components.*">
+	<fx:Script>
+		<![CDATA[
+			import be.dragdesign.tchpc.events.HermesEvent;
+			
+			import mx.events.FlexEvent;
+			
+			[Bindable]
+			private var btnArr:Array = [];
+			
+			protected function imagebutton_hermesHandler(event:HermesEvent):void
+			{
+				for each(var c:ImageButton in btnArr)
+				{
+					if(c.id != event.str_my_name)
+							c.unlock();
+				}
+				event.str_my_name = event.str_my_name + "_state";
+				dispatchEvent(event);
+			}
+
+			protected function hermes_reportingHandler(event:HermesEvent):void
+			{
+				btnArr.push(event.currentTarget);
+			}
+
+			protected function dashboard_creationCompleteHandler(event:FlexEvent):void
+			{
+				dashboard.lock();
+			}
+
+		]]>
+	</fx:Script>
+	<fx:Declarations>
+		<!-- Place non-visual elements (e.g., services, value objects) here -->
+	</fx:Declarations>
+	<fx:Metadata>
+		[Event(name="hermes",type="be.dragdesign.tchpc.events.HermesEvent")]
+		[Event(name="hermes_reporting",type="be.dragdesign.tchpc.events.HermesEvent")]
+	</fx:Metadata>
+	<s:Rect width="100%" height="65">
+		<s:fill>
+			<s:BitmapFill source="@Embed('assets/images/gui/Iconbar_repeater.png')" fillMode="repeat" >
+			</s:BitmapFill>
+		</s:fill>
+	</s:Rect>
+	<s:HGroup top="0" left="0" right="0">
+		<mx:Spacer width="5" />
+		<components:ImageButton creationComplete="dashboard_creationCompleteHandler(event)" hermes_reporting="hermes_reportingHandler(event)" hermes="imagebutton_hermesHandler(event)" imageSource="assets/images/gui/Pages/Dashboard.png" id="dashboard" name="dashboard" />
+		<mx:Spacer width="5" />
+		<components:ImageButton hermes_reporting="hermes_reportingHandler(event)" hermes="imagebutton_hermesHandler(event)" imageSource="assets/images/gui/Pages/Jobs.png" id="jobs" name="jobs" />
+		<mx:Spacer width="5" />
+		<components:ImageButton hermes_reporting="hermes_reportingHandler(event)" hermes="imagebutton_hermesHandler(event)" imageSource="assets/images/gui/Pages/Nodes.png" id="nodes" name="nodes" />
+		<mx:Spacer width="5" />
+		<components:ImageButton hermes_reporting="hermes_reportingHandler(event)" hermes="imagebutton_hermesHandler(event)" imageSource="assets/images/gui/Pages/Help.png" id="help" name="help" />
+		<mx:Spacer width="5" />
+	</s:HGroup>
+</s:Group>
