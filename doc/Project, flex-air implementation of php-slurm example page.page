@@ -1,0 +1,132 @@
+---
+categories: Project
+...
+
+# Summary
+
+The php-slurm/examples pages are basic and sparse, although they are functional they do not fully meet the requirements of the HOWEST internship requirements. With the php-slurm extension built along with supporting PHP code and libraries, this project will focus on creating a more interactive version of the basic site.
+
+# Project goals
+
+Note that all the "screens" should be interactive
+
+* Jobs screen where users can filter and sort the list
+    * Be able to show equivalent of 'squeue -u username'
+    * Be able to show equivalent of 'squeue -p partitionname'
+    * Be able to show equivalent of 'squeue -t running' or 'squeue -t pending'
+    * Show/sort job priorities
+* Jobs summary screen with statistics of the current system
+* Do the same for the Partition screens
+* The PHP version is slightly more geared towards the administrator; the flex/flash version should be more towards a user
+
+    
+# Requirements
+
+* Target lowest common denominator (see [Piwik Report](/Trinity_Centre_for_High_Performance_Computing_-_May_2011_-_PIWIK_report_for_TCHPC_site.pdf))
+    * Target top 2 or 3 most used browsers
+    * Target top 2 or 3 most used OS's and subsequently check minimum supported versions of Flash/Flex/AIR that is needed to run on these systems.
+* Users should be able to specify which head node (which slurmctld) to connect to.
+* (Maybe, this would be very useful) SOCKS4 or HTTP/HTTPS proxy support
+* Code should be compilable with an open source (or freely available compiler)
+* Server side components must function with SL5.4/5.5 system (this is what we have on the head nodes)
+
+# Output
+
+* A self contained application that can access the cluster controller daemons
+* A web application with a restricted set of data to be displayed
+* Colour scheme must conform with TCD/TCHPC
+* Documentation on the flex/air code
+
+# Criteria for success
+
+# Approach
+
+# Skill sets
+
+# Ideas
+
+* Possibly implement an RRDTOOL styled database on the client side so users can maintain their own historical database/view of the cluster status/usage
+* Let users save the state of what jobs they had on the cluster and in what queue, the use case for this is when they are offline they have a list of what's running (at the last point in time that they were online)
+* Setup selenium to do automated testing and clicking through the application
+* Possible "mobile" versions for android/iphone/symbian?
+* Based on information received from the the Partition array, suggest possible job scripts or srun/alloc run time parameters?
+* Let users drill down into their jobs and supply user with what's happening with their job (possibly need to talk to slurmdbd or look at how sacct works)
+* Graphs of user info
+    * Pie chart of number of jobs per user
+    * Bar chart with a breakdown of running/queued jobs per user
+    * Also per account (the -U account string)
+* Be able to click into a single job, and pull out job info (e.g. working dir, submission script, job start time)
+* Graphically show reservations
+    * Mark nodes as being reserved, by whom, and for how long
+* Regular testing on 
+    * XP
+    * SL5x, SL6x
+    * Fedora
+    * Ubuntu (current stable and last stable version)
+    * Windows7
+
+
+# Resources
+
+* <http://amfphp.sourceforge.net/> -- required on server side for deploying the application
+* <http://osflash.org/projects> -- flash/flex development resource for open source developers
+
+# Documentation
+
+## SWFObject and SWFAddress
+
+    * View the following file for an overview of SEO for flash content, also shows how to use SWFObject and SWFAddress
+[SEO summary](/SEO Summary.pdf)
+
+## Configuration of settings for FLURM application
+
+The installation of the application can be done by running the AIR file.
+
+During the installation deselect the "run after installation" option and copy the settings file into the installation directory of 
+your air application. 
+
+The next step is the configuration of your settings file.
+
+settings file ( settings.xml ) : 
+
+	url_gateway : contains the local url to your amfphp installation on your server 
+
+			Example : ~vermeulp/amfphp/gateway.php
+
+	url_slurm_functions : contains the filename of your slurm library file [Default = slurm.main]
+
+			Sidenote : the syntax for this is slightly different from the basic URL syntax
+                                   slurm.main is actually slurm/main.php, so in other words instead of 
+                                   having slashes you use a '.' and you leave out the file extension.
+
+	clusters : contains the different clusters on your system, this section is divided into cluster elements 
+
+		cluster
+			---->	name	:	The name of the cluster in the application
+			---->	url	:	The base url to your cluster
+
+					Example URL : http://lonsdale.tchpc.tcd.ie/
+
+	refreshtimes : Rate in miliseconds at which you want live data to be refreshed ( 30 000 is default ==> 30 second refresh interval )
+
+## amfphp 
+
+the installation of amfphp can be done by downloading the package from their website and copying the contents of that folder into a public html folder
+on your apache server. You would then define your php files that you want visible to the outer world inside of the services folder.
+
+However, inside of the howest repository there is a folder called amfphp_full_install containing the full amfphp that is at present running under lonsdale's file system
+this folder also contains the full services for both slurm_web and slurm_desktop ( slurm_web has its Jobs functionality stripped out ). 
+
+## compiled packages 
+
+the compiled packages folder inside of the TCHPC repo contains separate folders for both the web and desktop version of the application.
+
+    Web 
+
+            The web folder has a directly deployable application available, it is however important that you copy the contents of the ENTIRE folder 
+            onto your webserver. As usual the settings file is available, however don't move it into any subdirectory as it is already in its correct place.
+
+    Desktop
+
+            The desktop folder contains a compiled air package and a settings file. The installation can be done by running the air file and deselecting the "run after installation" checkbox
+            afterwards copy the settings.xml file into the root of the installation directory ( on windows machines this is usually in the Program Files or Program Files(x86) directory ).
